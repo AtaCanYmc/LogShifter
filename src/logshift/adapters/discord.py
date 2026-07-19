@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, List
 import httpx
 from base import TransportAdapter
-from logshift.core.exceptions import AdapterError
+from ..core.exceptions import AdapterError
 
 logger = logging.getLogger("logshift.adapters.discord")
 

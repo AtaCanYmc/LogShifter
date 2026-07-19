@@ -1,6 +1,9 @@
 import pytest
 import asyncio
-from logshift.core import LogshiftError, LogManager, AdapterError, TransportAdapter, LogFetcher
+from logshift.core.exceptions import LogshiftError, AdapterError
+from logshift.core.adapter import TransportAdapter
+from logshift.core.manager import LogManager
+from logshift.core.fetcher import LogFetcher
 
 
 def test_error_definitions():
