@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from logshift.adapters.telegram import TelegramAdapter
 
 

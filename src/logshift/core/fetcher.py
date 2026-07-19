@@ -60,7 +60,8 @@ class LogFetcher:
         last_id: Optional[Any] = None
 
         logger.info(
-            f"Starting cursor-based fetch from table '{table_name}' using cursor '{cursor_column}'..."
+            f"Starting cursor-based fetch from table '{table_name}' "
+            f"using cursor '{cursor_column}'..."
         )
 
         try:
@@ -88,7 +89,8 @@ class LogFetcher:
 
                 all_logs.extend(mapped_data)
                 logger.info(
-                    f"Fetched {len(data)} records. Last cursor value: {last_id}. Total so far: {len(all_logs)}"
+                    f"Fetched {len(data)} records. Last cursor value: {last_id}. "
+                    f"Total so far: {len(all_logs)}"
                 )
 
                 last_record = data[-1]

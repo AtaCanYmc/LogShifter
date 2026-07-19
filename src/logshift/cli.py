@@ -8,6 +8,8 @@ from logshift.core import LogManager, LogFetcher
 from logshift.adapters.github import GitHubAdapter
 from logshift.adapters.sheets import SheetsAdapter
 from logshift.adapters.telegram import TelegramAdapter
+from logshift.adapters.discord import DiscordAdapter
+from logshift.adapters.slack import SlackAdapter
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -18,7 +20,7 @@ logger = logging.getLogger("logshift.cli")
 @click.option(
     "--dry-run",
     is_flag=True,
-    help="Enable dry-run simulation mode. Runs extraction and formatting without executing commits, uploads, or notifications.",
+    help="Enable dry-run mode. Simulates routing without edits.",
 )
 @click.pass_context
 def cli(ctx: click.Context, dry_run: bool) -> None:
@@ -219,7 +221,8 @@ async def run_archive(
             targets["github"] = github_repo
         else:
             click.secho(
-                "GitHub adapter requested but configuration parameters (--github-token, --github-repo) missing.",
+                "GitHub adapter requested but configuration parameters "
+                "(--github-token, --github-repo) missing.",
                 fg="yellow",
             )
 
@@ -236,7 +239,8 @@ async def run_archive(
             targets["sheets"] = google_sheet_id
         else:
             click.secho(
-                "Sheets adapter requested but configuration parameters (--google-creds, --google-sheet-id) missing.",
+                "Sheets adapter requested but configuration parameters "
+                "(--google-creds, --google-sheet-id) missing.",
                 fg="yellow",
             )
 
@@ -250,7 +254,8 @@ async def run_archive(
             targets["telegram"] = telegram_chat_id
         else:
             click.secho(
-                "Telegram adapter requested but configuration parameters (--telegram-token, --telegram-chat-id) missing.",
+                "Telegram adapter requested but configuration parameters "
+                "(--telegram-token, --telegram-chat-id) missing.",
                 fg="yellow",
             )
     # Setup Discord Adapter if configured and requested
@@ -261,7 +266,8 @@ async def run_archive(
             targets["discord"] = discord_webhook
         else:
             click.secho(
-                "Discord adapter requested but configuration parameter (--discord-webhook) missing.",
+                "Discord adapter requested but configuration parameter "
+                "(--discord-webhook) missing.",
                 fg="yellow",
             )
 
@@ -273,7 +279,8 @@ async def run_archive(
             targets["slack"] = slack_webhook
         else:
             click.secho(
-                "Slack adapter requested but configuration parameter (--slack-webhook) missing.",
+                "Slack adapter requested but configuration parameter "
+                "(--slack-webhook) missing.",
                 fg="yellow",
             )
 

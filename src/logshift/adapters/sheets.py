@@ -73,8 +73,6 @@ class SheetsAdapter(TransportAdapter):
             logger.info("----------------------------------------------------")
             return True
 
-        import gspread
-
         if not self.service_account_file:
             raise AdapterError("Service Account JSON file is required.")
 
