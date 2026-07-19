@@ -241,8 +241,7 @@ async def run_archive(
             targets["slack"] = slack_webhook
         else:
             click.secho(
-                "Slack adapter requested but configuration parameter "
-                "(--slack-webhook) missing.",
+                "Slack adapter requested but configuration parameter " "(--slack-webhook) missing.",
                 fg="yellow",
             )
 
@@ -259,6 +258,7 @@ async def run_archive(
         # Determine log source stream
         if dry_run and supabase_url.startswith("https://dummy"):
             click.echo("[Dry-Run] Using mock Supabase records because URL is mock.")
+
             # Yield single mock chunk
             async def dummy_generator():
                 yield [
@@ -269,7 +269,7 @@ async def run_archive(
                         "body": "Dummy log 1",
                         "attributes": {"id": 1},
                         "trace_id": "",
-                        "span_id": ""
+                        "span_id": "",
                     },
                     {
                         "timestamp": "2026-07-19T12:05:00Z",
@@ -278,9 +278,10 @@ async def run_archive(
                         "body": "Dummy log 2",
                         "attributes": {"id": 2},
                         "trace_id": "",
-                        "span_id": ""
+                        "span_id": "",
                     },
                 ]
+
             log_stream = dummy_generator()
         else:
             fetcher = LogFetcher(supabase_url=supabase_url, supabase_key=supabase_key)
@@ -295,7 +296,9 @@ async def run_archive(
             if not chunk:
                 continue
 
-            click.echo(click.style(f"Streaming and shipping chunk of {len(chunk)} logs...", fg="cyan"))
+            click.echo(
+                click.style(f"Streaming and shipping chunk of {len(chunk)} logs...", fg="cyan")
+            )
             report = await manager.ship(
                 logs=chunk,
                 targets=targets,

@@ -9,16 +9,17 @@ logger = logging.getLogger("logshift.core.fetcher")
 
 class LogFetcher:
     """
-    LogFetcher retrieves log entries from a Supabase database table in a chunked, 
+    LogFetcher retrieves log entries from a Supabase database table in a chunked,
     memory-efficient manner using cursor-based pagination (ID-based progression).
     """
 
     def __init__(self, supabase_url: str, supabase_key: str) -> None:
         if not supabase_url or not supabase_key:
             raise ConfigurationError("Supabase URL and API Key must be provided.")
-        
+
         # Defer import to keep core lightweight
         from supabase import create_client, Client
+
         self.client: Client = create_client(supabase_url, supabase_key)
 
     async def fetch_logs(
@@ -29,7 +30,7 @@ class LogFetcher:
         date_column: str = "created_at",
         cursor_column: str = "id",
         chunk_size: int = 1000,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         """
         Backward-compatible method returning a flat list of all retrieved logs.
@@ -42,7 +43,7 @@ class LogFetcher:
             date_column=date_column,
             cursor_column=cursor_column,
             chunk_size=chunk_size,
-            **kwargs
+            **kwargs,
         ):
             all_logs.extend(chunk)
         return all_logs
@@ -55,7 +56,7 @@ class LogFetcher:
         date_column: str = "created_at",
         cursor_column: str = "id",
         chunk_size: int = 1000,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Asynchronously yields chunks of formatted OpenTelemetry logs page-by-page.
@@ -78,7 +79,7 @@ class LogFetcher:
                     date_column,
                     cursor_column,
                     chunk_size,
-                    **kwargs
+                    **kwargs,
                 )
 
                 if not page_data:
@@ -111,7 +112,7 @@ class LogFetcher:
         date_column: str = "created_at",
         cursor_column: str = "id",
         chunk_size: int = 1000,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         query = self.client.table(table_name).select("*")
 
@@ -133,14 +134,17 @@ class LogFetcher:
         Converts a raw database row into OpenTelemetry Log Record format.
         """
         level = str(row.get("level", "INFO")).upper()
-        
+
         severity_map = {
-            "TRACE": 1, "VERBOSE": 1,
+            "TRACE": 1,
+            "VERBOSE": 1,
             "DEBUG": 5,
             "INFO": 9,
-            "WARN": 13, "WARNING": 13,
+            "WARN": 13,
+            "WARNING": 13,
             "ERROR": 17,
-            "FATAL": 21, "CRITICAL": 21
+            "FATAL": 21,
+            "CRITICAL": 21,
         }
         severity_number = severity_map.get(level, 9)
 
@@ -156,5 +160,5 @@ class LogFetcher:
             "body": body,
             "attributes": attributes,
             "trace_id": row.get("trace_id", ""),
-            "span_id": row.get("span_id", "")
+            "span_id": row.get("span_id", ""),
         }
