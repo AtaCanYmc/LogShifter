@@ -1,7 +1,6 @@
 import pytest
 import asyncio
 from logshift.core import LogshiftError, LogManager, AdapterError, TransportAdapter
-from logshift.config import LogshiftSettings
 from logshift.adapters.sheets import SheetsAdapter
 from logshift.adapters.telegram import TelegramAdapter
 
@@ -15,17 +14,6 @@ def test_log_manager_initialization():
     assert manager.dry_run is True
     assert manager.max_retries == 2
     assert len(manager.registered_adapters) == 0
-
-
-def test_settings_mock_construct():
-    settings = LogshiftSettings.model_construct(
-        supabase_url="https://dummy.supabase.co",
-        supabase_key="dummy-key",
-        logshift_github_token="dummy-token",
-        logshift_github_repo="dummy/repo"
-    )
-    assert settings.supabase_url == "https://dummy.supabase.co"
-    assert settings.logshift_github_token == "dummy-token"
 
 
 def test_adapters_dry_run_initialization():

@@ -32,7 +32,7 @@ It is designed to solve database log retention limitations (e.g. Supabase Free T
 - **Unified Interface:** Register multiple adapters and ship logs concurrently using `asyncio`.
 - **Cursor-Based Pagination:** Efficiently query millions of rows from Supabase using ID-based cursor pagination instead of heavy OFFSET calls.
 - **Fail-Safe Retries:** Automatic network error resilience using exponential backoff retry loops.
-- **Pydantic Validation:** Strongly typed configuration loading and validation via `pydantic-settings`.
+- **No Global Env Files:** Designed to be clean and reusable—every configuration, key, and endpoint is passed strictly as explicit function arguments or CLI parameters.
 - **Dry-Run Mode:** Test your setup safely without modifying databases, committing code, or triggering active alerts.
 
 ---
@@ -44,7 +44,6 @@ logshift/
 ├── src/
 │   └── logshift/
 │       ├── __init__.py
-│       ├── config.py       # Pydantic Settings configuration loader
 │       ├── core.py         # LogManager, LogFetcher, and base classes
 │       └── adapters/       # Independent transport adapters
 │           ├── __init__.py
@@ -75,40 +74,38 @@ pip install -e .
 
 ---
 
-## 5. Configuration
+## 5. CLI Usage
 
-All configuration is loaded via environment variables or a local `.env` file managed by `pydantic-settings`. 
+All configuration options are passed directly as command-line arguments. This keeps execution stateless and simple.
 
-Configure your variables as shown in `.env.example`:
+### Run in Dry-Run (Simulation) Mode
+Test your configuration and see simulated logs output without pushing to any destinations:
+```bash
+logshift --dry-run archive \
+  --supabase-url "https://dummy.supabase.co" \
+  --supabase-key "dummy-key" \
+  --dest github,sheets,telegram
+```
 
-```env
-# Supabase Source Configuration
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-supabase-service-role-key
-SUPABASE_TABLE_NAME=logs
-SUPABASE_DATE_COLUMN=created_at
-
-# GitHub Adapter Configuration
-LOGSHIFT_GITHUB_TOKEN=ghp_yourGitHubAccessToken
-LOGSHIFT_GITHUB_REPO=username/logs-archive-repo
-LOGSHIFT_GITHUB_PATH=logs/archive.json
-LOGSHIFT_GITHUB_BRANCH=main
-
-# Google Sheets Configuration
-GOOGLE_SERVICE_ACCOUNT_FILE=credentials.json
-GOOGLE_SPREADSHEET_ID=your_spreadsheet_id_here
-GOOGLE_WORKSHEET_NAME=Logs
-
-# Telegram Configuration
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=your_chat_id_here
+### Run Active Archive Pipeline
+Run the real pipeline pulling from Supabase and shipping to GitHub and Telegram:
+```bash
+logshift archive \
+  --supabase-url "https://yourproject.supabase.co" \
+  --supabase-key "your-supabase-service-role-key" \
+  --supabase-table "logs" \
+  --dest github,telegram \
+  --github-token "ghp_yourPersonalAccessToken" \
+  --github-repo "username/logs-archive-repo" \
+  --telegram-token "bot_token_here" \
+  --telegram-chat-id "chat_id_here"
 ```
 
 ---
 
-## 6. Quick Start & CLI Usage
+## 6. Programmatic Usage
 
-### Programmatic Usage
+To run the SDK programmatically, instantiate the adapters by passing parameters explicitly to their constructors:
 
 ```python
 import asyncio
@@ -120,7 +117,7 @@ async def main():
     # Instantiate manager with retry logic (3 retries, initial delay 1.0s)
     manager = LogManager(dry_run=False, max_retries=3, initial_delay=1.0)
     
-    # Register adapters
+    # Register adapters explicitly passing parameters
     manager.register_adapter(GitHubAdapter(token="your_github_token"))
     manager.register_adapter(TelegramAdapter(bot_token="bot_token", chat_id="chat_id"))
     
@@ -136,18 +133,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-### Command Line Interface (CLI)
-
-Run dry-run simulation mode (safely logs what action would be taken without sending requests):
-```bash
-logshift --dry-run archive --source supabase --dest github,sheets,telegram
-```
-
-Run active archiving pipeline to specified destinations:
-```bash
-logshift archive --source supabase --dest github,telegram
 ```
 
 ---
@@ -179,7 +164,7 @@ class SlackAdapter(TransportAdapter):
 
 ## 8. Automation (GitHub Actions Workflow)
 
-Create `.github/workflows/main.yml` to automate daily log archiving tasks:
+Configure `.github/workflows/main.yml` using GitHub Secrets passed directly as execution parameters:
 
 ```yaml
 name: Logshift Daily Cron
@@ -201,13 +186,14 @@ jobs:
         run: |
           pip install -e .
       - name: Execute logshift
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          LOGSHIFT_GITHUB_TOKEN: ${{ secrets.LOGSHIFT_GITHUB_TOKEN }}
-          LOGSHIFT_GITHUB_REPO: ${{ secrets.LOGSHIFT_GITHUB_REPO }}
         run: |
-          logshift archive --source supabase --dest github
+          logshift archive \
+            --supabase-url "${{ secrets.SUPABASE_URL }}" \
+            --supabase-key "${{ secrets.SUPABASE_KEY }}" \
+            --supabase-table "logs" \
+            --dest github \
+            --github-token "${{ secrets.LOGSHIFT_GITHUB_TOKEN }}" \
+            --github-repo "${{ secrets.LOGSHIFT_GITHUB_REPO }}"
 ```
 
 ---

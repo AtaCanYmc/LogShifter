@@ -3,9 +3,7 @@ import click
 import logging
 import sys
 from datetime import datetime
-from pydantic import ValidationError
 
-from logshift.config import LogshiftSettings
 from logshift.core import LogManager, LogFetcher
 from logshift.adapters.github import GitHubAdapter
 from logshift.adapters.sheets import SheetsAdapter
@@ -31,14 +29,6 @@ def cli(ctx: click.Context, dry_run: bool) -> None:
     ctx.ensure_object(dict)
     ctx.obj["DRY_RUN"] = dry_run
 
-    # Load configuration settings via Pydantic
-    try:
-        settings = LogshiftSettings()
-        ctx.obj["SETTINGS"] = settings
-    except ValidationError as e:
-        click.secho("Configuration validation failed. Ensure required environment variables or .env parameters are set.", fg="yellow", err=True)
-        ctx.obj["SETTINGS_ERROR"] = e
-
 
 @cli.command()
 @click.option(
@@ -56,48 +46,67 @@ def cli(ctx: click.Context, dry_run: bool) -> None:
     help="Log destination repository/storage (comma-separated, e.g. github,sheets,telegram).",
     show_default=True
 )
-@click.option(
-    "--start-date",
-    help="Filter logs starting from this ISO timestamp (greater than).",
-    default=None
-)
-@click.option(
-    "--end-date",
-    help="Filter logs up to this ISO timestamp (less than).",
-    default=None
-)
+# Supabase Parameters
+@click.option("--supabase-url", help="Supabase project URL.", required=True)
+@click.option("--supabase-key", help="Supabase API key / service role key.", required=True)
+@click.option("--supabase-table", default="logs", help="Supabase logs table name.", show_default=True)
+@click.option("--supabase-date-col", default="created_at", help="Database date column for filtering.", show_default=True)
+# GitHub Parameters
+@click.option("--github-token", help="GitHub Personal Access Token.")
+@click.option("--github-repo", help="Target GitHub repository (format: owner/repo).")
+@click.option("--github-path", default="logs/archive.json", help="Relative file path inside repository.", show_default=True)
+@click.option("--github-branch", default="main", help="Target branch name.", show_default=True)
+# Google Sheets Parameters
+@click.option("--google-creds", help="Path to Google Service Account credentials.json file.")
+@click.option("--google-sheet-id", help="Google Spreadsheet ID key.")
+@click.option("--google-worksheet", default="Logs", help="Target worksheet name.", show_default=True)
+# Telegram Parameters
+@click.option("--telegram-token", help="Telegram Bot Token.")
+@click.option("--telegram-chat-id", help="Telegram Chat ID.")
+# Date Filters
+@click.option("--start-date", help="Filter logs starting from this ISO timestamp (greater than).")
+@click.option("--end-date", help="Filter logs up to this ISO timestamp (less than).")
 @click.pass_context
 def archive(
     ctx: click.Context,
     source: str,
     dest: str,
+    supabase_url: str,
+    supabase_key: str,
+    supabase_table: str,
+    supabase_date_col: str,
+    github_token: str | None,
+    github_repo: str | None,
+    github_path: str,
+    github_branch: str,
+    google_creds: str | None,
+    google_sheet_id: str | None,
+    google_worksheet: str,
+    telegram_token: str | None,
+    telegram_chat_id: str | None,
     start_date: str | None,
     end_date: str | None
 ) -> None:
     """Extract logs from source database and archive them to the selected destination(s)."""
     dry_run = ctx.obj["DRY_RUN"]
-    
-    if "SETTINGS_ERROR" in ctx.obj and not dry_run:
-        click.secho("Cannot execute archiving because of validation errors:", fg="red", err=True)
-        click.echo(ctx.obj["SETTINGS_ERROR"], err=True)
-        sys.exit(1)
-
-    settings: LogshiftSettings = ctx.obj.get("SETTINGS") or LogshiftSettings.model_construct(
-        supabase_url="https://dummy.supabase.co",
-        supabase_key="dummy",
-        logshift_github_token="dummy",
-        logshift_github_repo="dummy/dummy",
-        google_service_account_file="dummy.json",
-        google_spreadsheet_id="dummy",
-        telegram_bot_token="dummy",
-        telegram_chat_id="dummy"
-    )
 
     asyncio.run(
         run_archive(
-            settings=settings,
             source=source,
             dest=dest,
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
+            supabase_table=supabase_table,
+            supabase_date_col=supabase_date_col,
+            github_token=github_token,
+            github_repo=github_repo,
+            github_path=github_path,
+            github_branch=github_branch,
+            google_creds=google_creds,
+            google_sheet_id=google_sheet_id,
+            google_worksheet=google_worksheet,
+            telegram_token=telegram_token,
+            telegram_chat_id=telegram_chat_id,
             start_date=start_date,
             end_date=end_date,
             dry_run=dry_run
@@ -106,9 +115,21 @@ def archive(
 
 
 async def run_archive(
-    settings: LogshiftSettings,
     source: str,
     dest: str,
+    supabase_url: str,
+    supabase_key: str,
+    supabase_table: str,
+    supabase_date_col: str,
+    github_token: str | None,
+    github_repo: str | None,
+    github_path: str,
+    github_branch: str,
+    google_creds: str | None,
+    google_sheet_id: str | None,
+    google_worksheet: str,
+    telegram_token: str | None,
+    telegram_chat_id: str | None,
     start_date: str | None,
     end_date: str | None,
     dry_run: bool
@@ -123,19 +144,19 @@ async def run_archive(
     click.echo(click.style(f"Fetching logs from source '{source}'...", fg="cyan"))
     
     try:
-        if dry_run and settings.supabase_url.startswith("https://dummy"):
+        if dry_run and supabase_url.startswith("https://dummy"):
             click.echo("[Dry-Run] Using mock Supabase records because URL is mock.")
             logs = [
                 {"id": 1, "created_at": "2026-07-19T12:00:00Z", "level": "INFO", "message": "Dummy log 1"},
                 {"id": 2, "created_at": "2026-07-19T12:05:00Z", "level": "WARNING", "message": "Dummy log 2"}
             ]
         else:
-            fetcher = LogFetcher(supabase_url=settings.supabase_url, supabase_key=settings.supabase_key)
+            fetcher = LogFetcher(supabase_url=supabase_url, supabase_key=supabase_key)
             logs = await fetcher.fetch_logs(
-                table_name=settings.supabase_table_name,
+                table_name=supabase_table,
                 start_date=start_date,
                 end_date=end_date,
-                date_column=settings.supabase_date_column
+                date_column=supabase_date_col
             )
         
         if not logs:
@@ -157,39 +178,39 @@ async def run_archive(
 
     # Setup GitHub Adapter if configured and requested
     if "github" in dest_list:
-        if settings.logshift_github_token and settings.logshift_github_repo:
-            github_adapter = GitHubAdapter(token=settings.logshift_github_token, name="github")
+        if github_token and github_repo:
+            github_adapter = GitHubAdapter(token=github_token, name="github")
             manager.register_adapter(github_adapter)
-            targets["github"] = settings.logshift_github_repo
+            targets["github"] = github_repo
         else:
-            click.secho("GitHub adapter requested but configuration missing.", fg="yellow")
+            click.secho("GitHub adapter requested but configuration parameters (--github-token, --github-repo) missing.", fg="yellow")
 
     # Setup Google Sheets Adapter if configured and requested
     if "sheets" in dest_list:
-        if settings.google_service_account_file and settings.google_spreadsheet_id:
+        if google_creds and google_sheet_id:
             sheets_adapter = SheetsAdapter(
-                service_account_file=settings.google_service_account_file,
-                spreadsheet_id=settings.google_spreadsheet_id,
-                worksheet_name=settings.google_worksheet_name,
+                service_account_file=google_creds,
+                spreadsheet_id=google_sheet_id,
+                worksheet_name=google_worksheet,
                 name="sheets"
             )
             manager.register_adapter(sheets_adapter)
-            targets["sheets"] = settings.google_spreadsheet_id
+            targets["sheets"] = google_sheet_id
         else:
-            click.secho("Sheets adapter requested but configuration missing.", fg="yellow")
+            click.secho("Sheets adapter requested but configuration parameters (--google-creds, --google-sheet-id) missing.", fg="yellow")
 
     # Setup Telegram Adapter if configured and requested
     if "telegram" in dest_list:
-        if settings.telegram_bot_token and settings.telegram_chat_id:
+        if telegram_token and telegram_chat_id:
             telegram_adapter = TelegramAdapter(
-                bot_token=settings.telegram_bot_token,
-                chat_id=settings.telegram_chat_id,
+                bot_token=telegram_token,
+                chat_id=telegram_chat_id,
                 name="telegram"
             )
             manager.register_adapter(telegram_adapter)
-            targets["telegram"] = settings.telegram_chat_id
+            targets["telegram"] = telegram_chat_id
         else:
-            click.secho("Telegram adapter requested but configuration missing.", fg="yellow")
+            click.secho("Telegram adapter requested but configuration parameters (--telegram-token, --telegram-chat-id) missing.", fg="yellow")
 
     if not targets:
         click.secho("No active adapters configured for shipment.", fg="red", err=True)
@@ -200,8 +221,8 @@ async def run_archive(
     report = await manager.ship(
         logs=logs,
         targets=targets,
-        path=settings.logshift_github_path,
-        branch=settings.logshift_github_branch,
+        path=github_path,
+        branch=github_branch,
         message=f"Archive logs: {today_str}"
     )
 
