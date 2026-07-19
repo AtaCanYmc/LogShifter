@@ -63,6 +63,8 @@ def cli(ctx: click.Context, dry_run: bool) -> None:
 # Telegram Parameters
 @click.option("--telegram-token", help="Telegram Bot Token.")
 @click.option("--telegram-chat-id", help="Telegram Chat ID.")
+# Discord Parameters
+@click.option("--discord-webhook", help="Discord Webhook URL.")
 # Date Filters
 @click.option("--start-date", help="Filter logs starting from this ISO timestamp (greater than).")
 @click.option("--end-date", help="Filter logs up to this ISO timestamp (less than).")
@@ -84,6 +86,7 @@ def archive(
     google_worksheet: str,
     telegram_token: str | None,
     telegram_chat_id: str | None,
+    discord_webhook: str | None,
     start_date: str | None,
     end_date: str | None
 ) -> None:
@@ -107,6 +110,7 @@ def archive(
             google_worksheet=google_worksheet,
             telegram_token=telegram_token,
             telegram_chat_id=telegram_chat_id,
+            discord_webhook=discord_webhook,
             start_date=start_date,
             end_date=end_date,
             dry_run=dry_run
@@ -130,6 +134,7 @@ async def run_archive(
     google_worksheet: str,
     telegram_token: str | None,
     telegram_chat_id: str | None,
+    discord_webhook: str | None,
     start_date: str | None,
     end_date: str | None,
     dry_run: bool
@@ -211,6 +216,18 @@ async def run_archive(
             targets["telegram"] = telegram_chat_id
         else:
             click.secho("Telegram adapter requested but configuration parameters (--telegram-token, --telegram-chat-id) missing.", fg="yellow")
+
+    # Setup Discord Adapter if configured and requested
+    if "discord" in dest_list:
+        if discord_webhook:
+            discord_adapter = DiscordAdapter(
+                webhook_url=discord_webhook,
+                name="discord"
+            )
+            manager.register_adapter(discord_adapter)
+            targets["discord"] = discord_webhook
+        else:
+            click.secho("Discord adapter requested but configuration parameter (--discord-webhook) missing.", fg="yellow")
 
     if not targets:
         click.secho("No active adapters configured for shipment.", fg="red", err=True)

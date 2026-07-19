@@ -15,3 +15,7 @@ If you discover a security vulnerability within Logshift (such as token leakage 
 
 - Email the maintainers directly at security@example.com.
 - We will acknowledge receipt of your vulnerability report within 48 hours and work with you to outline a timeline for fixing the issue and publishing a patch.
+
+## Webhook and API Credentials Warning
+Please treat all Webhook URLs (e.g. Discord Webhooks, Telegram Bot Tokens) and database API keys as sensitive credentials. Exposing them in public repositories or unencrypted configuration files allows unauthorized parties to flood your communication channels or extract private data. Always pass credentials dynamically as command-line arguments or inject them as GitHub Secrets during CI/CD execution.
+
