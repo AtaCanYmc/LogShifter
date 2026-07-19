@@ -15,13 +15,14 @@ graph LR
     Logshift -->|append rows| Sheets[Google Sheets]
     Logshift -->|notify| Telegram[Telegram Bot]
     Logshift -->|webhook| Discord[Discord Channel]
+    Logshift -->|webhook| Slack[Slack Channel]
 ```
 
 ---
 
 ## 1. About the Project
 
-**logshift** is a developer-friendly Python SDK and Command Line Interface (CLI) built to extract log records from databases (such as Supabase) and ship/archive them asynchronously to multiple notification and storage destinations (GitHub, Google Sheets, Telegram, and Discord Webhooks). 
+**logshift** is a developer-friendly Python SDK and Command Line Interface (CLI) built to extract log records from databases (such as Supabase) and ship/archive them asynchronously to multiple notification and storage destinations (GitHub, Google Sheets, Telegram, Discord, and Slack Webhooks). 
 
 It is designed to solve database log retention limitations (e.g. Supabase Free Tier log retention limits) by automating scheduled archiving pipelines without losing critical debugging history.
 
@@ -35,7 +36,7 @@ It is designed to solve database log retention limitations (e.g. Supabase Free T
 - **Fail-Safe Retries:** Automatic network error resilience using exponential backoff retry loops.
 - **No Global Env Files:** Designed to be clean and reusable—every configuration, key, and endpoint is passed strictly as explicit function arguments or CLI parameters.
 - **Continuous Integration (CI):** Out-of-the-box workflows validating code formatting (black), style/lints (ruff), type checks (mypy), and compatibility testing matrix (pytest).
-- **Discord Rate-Limit Handling:** Seamless HTTP 429 backoff retry loops using dynamic `retry_after` header configurations.
+- **Discord & Slack Rate-Limit Handling:** Seamless HTTP 429 backoff retry loops using dynamic header configurations.
 - **OpenTelemetry Standard Format:** Automatically maps raw database log rows into the standardized OpenTelemetry (OTLP) log record data structure (including `timestamp`, `severity_text`, `severity_number`, `body`, `attributes`, `trace_id`, and `span_id`), making logs instantly compatible with OTel collectors.
 - **Dry-Run Mode:** Test your setup safely without modifying databases, committing code, or triggering active alerts.
 
@@ -63,7 +64,8 @@ logshift/
 │           ├── github.py   # GitPython based repository archiver
 │           ├── sheets.py   # gspread based Google Sheets exporter
 │           ├── telegram.py # httpx based Telegram notification channel
-│           └── discord.py  # httpx based Discord Webhook adapter
+│           ├── discord.py  # httpx based Discord Webhook adapter
+│           └── slack.py    # httpx based Slack Webhook adapter
 ├── demo/
 │   └── demo.py         # Complete usage example
 ├── tests/              # Pytest unit tests
@@ -98,22 +100,23 @@ Test your configuration and see simulated logs output without pushing to any des
 logshift --dry-run archive \
   --supabase-url "https://dummy.supabase.co" \
   --supabase-key "dummy-key" \
-  --dest github,sheets,telegram,discord
+  --dest github,sheets,telegram,discord,slack
 ```
 
 ### Run Active Archive Pipeline
-Run the real pipeline pulling from Supabase and shipping to multiple destinations (GitHub, Telegram, and Discord Webhook):
+Run the real pipeline pulling from Supabase and shipping to multiple destinations (GitHub, Telegram, Discord, and Slack Webhook):
 ```bash
 logshift archive \
   --supabase-url "https://yourproject.supabase.co" \
   --supabase-key "your-supabase-service-role-key" \
   --supabase-table "logs" \
-  --dest github,telegram,discord \
+  --dest github,telegram,discord,slack \
   --github-token "ghp_yourPersonalAccessToken" \
   --github-repo "username/logs-archive-repo" \
   --telegram-token "bot_token_here" \
   --telegram-chat-id "chat_id_here" \
-  --discord-webhook "https://discord.com/api/webhooks/123/abc"
+  --discord-webhook "https://discord.com/api/webhooks/123/abc" \
+  --slack-webhook "https://hooks.slack.com/services/123/abc"
 ```
 
 ---
@@ -128,6 +131,7 @@ from logshift.core import LogManager
 from logshift.adapters.github import GitHubAdapter
 from logshift.adapters.telegram import TelegramAdapter
 from logshift.adapters.discord import DiscordAdapter
+from logshift.adapters.slack import SlackAdapter
 
 async def main():
     # Instantiate manager with retry logic (3 retries, initial delay 1.0s)
@@ -137,13 +141,15 @@ async def main():
     manager.register_adapter(GitHubAdapter(token="your_github_token"))
     manager.register_adapter(TelegramAdapter(bot_token="bot_token", chat_id="chat_id"))
     manager.register_adapter(DiscordAdapter(webhook_url="https://discord.com/api/webhooks/123/abc"))
+    manager.register_adapter(SlackAdapter(webhook_url="https://hooks.slack.com/services/123/abc"))
     
     # Sample logs to archive
     logs = [{"id": 101, "level": "ERROR", "message": "CRITICAL: Service offline."}]
     targets = {
         "github": "myuser/my-logs-repo",
         "telegram": "chat_id",
-        "discord": "https://discord.com/api/webhooks/123/abc"
+        "discord": "https://discord.com/api/webhooks/123/abc",
+        "slack": "https://hooks.slack.com/services/123/abc"
     }
     
     report = await manager.ship(logs=logs, targets=targets)
@@ -207,12 +213,12 @@ jobs:
         run: |
           logshift archive \
             --supabase-url "${{ secrets.SUPABASE_URL }}" \
-            --secrets-key "${{ secrets.SUPABASE_KEY }}" \
+            --supabase-key "${{ secrets.SUPABASE_KEY }}" \
             --supabase-table "logs" \
-            --dest github,discord \
+            --dest github,slack \
             --github-token "${{ secrets.LOGSHIFT_GITHUB_TOKEN }}" \
             --github-repo "${{ secrets.LOGSHIFT_GITHUB_REPO }}" \
-            --discord-webhook "${{ secrets.LOGSHIFT_DISCORD_WEBHOOK }}"
+            --slack-webhook "${{ secrets.LOGSHIFT_SLACK_WEBHOOK }}"
 ```
 
 ---
@@ -221,14 +227,14 @@ jobs:
 
 - [ ] S3 Compatible Storage Adapter (MinIO, AWS S3, Cloudflare R2)
 - [ ] Model Context Protocol (MCP) Server support (to connect directly with AI IDE agents)
-- [ ] Discord Webhook Adapter (Completed :white_check_mark:)
-- [ ] Slack Notification Adapter
+- [x] Discord Webhook Adapter
+- [x] Slack Notification Adapter
 
 ---
 
 ## 10. Contributing
 
- We appreciate your interest in contributing to logshift!
+We appreciate your interest in contributing to logshift!
 - Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on submitting Pull Requests.
 - For security issues, read [SECURITY.md](SECURITY.md) to report vulnerabilities privately.
 

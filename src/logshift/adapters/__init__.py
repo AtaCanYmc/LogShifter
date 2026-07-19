@@ -3,6 +3,7 @@ from logshift.adapters.github import GitHubAdapter
 from logshift.adapters.sheets import SheetsAdapter
 from logshift.adapters.telegram import TelegramAdapter
 from logshift.adapters.discord import DiscordAdapter
+from logshift.adapters.slack import SlackAdapter
 
 __all__ = [
     "TransportAdapter",
@@ -10,4 +11,5 @@ __all__ = [
     "SheetsAdapter",
     "TelegramAdapter",
     "DiscordAdapter",
+    "SlackAdapter",
 ]

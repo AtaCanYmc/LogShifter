@@ -65,6 +65,8 @@ def cli(ctx: click.Context, dry_run: bool) -> None:
 @click.option("--telegram-chat-id", help="Telegram Chat ID.")
 # Discord Parameters
 @click.option("--discord-webhook", help="Discord Webhook URL.")
+# Slack Parameters
+@click.option("--slack-webhook", help="Slack Webhook URL.")
 # Date Filters
 @click.option("--start-date", help="Filter logs starting from this ISO timestamp (greater than).")
 @click.option("--end-date", help="Filter logs up to this ISO timestamp (less than).")
@@ -87,6 +89,7 @@ def archive(
     telegram_token: str | None,
     telegram_chat_id: str | None,
     discord_webhook: str | None,
+    slack_webhook: str | None,
     start_date: str | None,
     end_date: str | None
 ) -> None:
@@ -111,6 +114,7 @@ def archive(
             telegram_token=telegram_token,
             telegram_chat_id=telegram_chat_id,
             discord_webhook=discord_webhook,
+            slack_webhook=slack_webhook,
             start_date=start_date,
             end_date=end_date,
             dry_run=dry_run
@@ -135,6 +139,7 @@ async def run_archive(
     telegram_token: str | None,
     telegram_chat_id: str | None,
     discord_webhook: str | None,
+    slack_webhook: str | None,
     start_date: str | None,
     end_date: str | None,
     dry_run: bool
@@ -216,7 +221,6 @@ async def run_archive(
             targets["telegram"] = telegram_chat_id
         else:
             click.secho("Telegram adapter requested but configuration parameters (--telegram-token, --telegram-chat-id) missing.", fg="yellow")
-
     # Setup Discord Adapter if configured and requested
     if "discord" in dest_list:
         if discord_webhook:
@@ -228,6 +232,18 @@ async def run_archive(
             targets["discord"] = discord_webhook
         else:
             click.secho("Discord adapter requested but configuration parameter (--discord-webhook) missing.", fg="yellow")
+
+    # Setup Slack Adapter if configured and requested
+    if "slack" in dest_list:
+        if slack_webhook:
+            slack_adapter = SlackAdapter(
+                webhook_url=slack_webhook,
+                name="slack"
+            )
+            manager.register_adapter(slack_adapter)
+            targets["slack"] = slack_webhook
+        else:
+            click.secho("Slack adapter requested but configuration parameter (--slack-webhook) missing.", fg="yellow")
 
     if not targets:
         click.secho("No active adapters configured for shipment.", fg="red", err=True)
