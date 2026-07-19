@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, Optional
-from logport.core.exceptions import ConfigurationError
+from logshift.core.exceptions import ConfigurationError
 
 
 def load_env(env_path: Optional[str] = None) -> Dict[str, str]:

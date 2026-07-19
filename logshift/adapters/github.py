@@ -5,10 +5,10 @@ import logging
 import urllib.request
 import urllib.error
 from typing import Any, Dict, List
-from logport.core.adapter import TransportAdapter
-from logport.core.exceptions import AdapterError
+from logshift.core.adapter import TransportAdapter
+from logshift.core.exceptions import AdapterError
 
-logger = logging.getLogger("logport.adapters.github")
+logger = logging.getLogger("logshift.adapters.github")
 
 
 class GitHubAdapter(TransportAdapter):
@@ -17,12 +17,12 @@ class GitHubAdapter(TransportAdapter):
     using the GitHub Contents API.
     
     Required Config:
-        - token (or LOGPORT_GITHUB_TOKEN env): GitHub Personal Access Token
+        - token (or LOGSHIFT_GITHUB_TOKEN env): GitHub Personal Access Token
     """
 
     def __init__(self, name: str = "github", config: Dict[str, Any] | None = None) -> None:
         super().__init__(name, config)
-        self.token = self.config.get("token") or self.config.get("LOGPORT_GITHUB_TOKEN")
+        self.token = self.config.get("token") or self.config.get("LOGSHIFT_GITHUB_TOKEN")
 
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
@@ -33,7 +33,7 @@ class GitHubAdapter(TransportAdapter):
             target: The repository path in the format "owner/repo".
             **kwargs: 
                 - path: The file path within the repo (default: "logs/archive.json").
-                - message: Commit message (default: "chore: archive logs [logport]").
+                - message: Commit message (default: "chore: archive logs [logshift]").
                 - branch: Branch name (default: "main").
         """
         if not self.token:
@@ -43,7 +43,7 @@ class GitHubAdapter(TransportAdapter):
             raise AdapterError("Target must be in the format 'owner/repo'.")
 
         path = kwargs.get("path", "logs/archive.json")
-        commit_message = kwargs.get("message", "chore: archive logs [logport]")
+        commit_message = kwargs.get("message", "chore: archive logs [logshift]")
         branch = kwargs.get("branch", "main")
 
         # Format logs as pretty JSON
@@ -77,7 +77,7 @@ class GitHubAdapter(TransportAdapter):
                 "Authorization": f"Bearer {self.token}",
                 "Accept": "application/vnd.github+json",
                 "Content-Type": "application/json",
-                "User-Agent": "logport-sdk",
+                "User-Agent": "logshift-sdk",
             },
             method="PUT",
         )
@@ -104,7 +104,7 @@ class GitHubAdapter(TransportAdapter):
             headers={
                 "Authorization": f"Bearer {self.token}",
                 "Accept": "application/vnd.github+json",
-                "User-Agent": "logport-sdk",
+                "User-Agent": "logshift-sdk",
             },
             method="GET",
         )

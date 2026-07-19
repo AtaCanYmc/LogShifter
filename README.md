@@ -1,6 +1,6 @@
-# Logport SDK
+# Logshift SDK
 
-Logport, Supabase gibi veri kaynaklarından belirli zamanlarda (cron) log verilerini çekip, bunları aynı anda veya seçmeli olarak farklı depolama ve bildirim servislerine (GitHub, Telegram, Google Sheets) güvenli şekilde aktaran ve arşivleyen çoklu hedefli, modüler bir Python SDK'sıdır.
+Logshift, Supabase gibi veri kaynaklarından belirli zamanlarda (cron) log verilerini çekip, bunları aynı anda veya seçmeli olarak farklı depolama ve bildirim servislerine (GitHub, Telegram, Google Sheets) güvenli şekilde aktaran ve arşivleyen çoklu hedefli, modüler bir Python SDK'sıdır.
 
 ## 🚀 Temel Özellikler
 
@@ -16,7 +16,7 @@ Logport, Supabase gibi veri kaynaklarından belirli zamanlarda (cron) log verile
 ## 📁 Dosya Dizin Yapısı
 
 ```text
-logport/
+logshift/
 ├── __init__.py         # Paket dışa aktarımları
 ├── core/
 │   ├── __init__.py
@@ -50,7 +50,7 @@ cp .env.example .env
 
 `.env` içeriği örneği:
 ```env
-LOGPORT_GITHUB_TOKEN=ghp_yourPersonalAccessTokenHere
+LOGSHIFT_GITHUB_TOKEN=ghp_yourPersonalAccessTokenHere
 ```
 
 ---
@@ -59,7 +59,7 @@ LOGPORT_GITHUB_TOKEN=ghp_yourPersonalAccessTokenHere
 
 ```python
 import asyncio
-from logport import LogManager, GitHubAdapter, load_env
+from logshift import LogManager, GitHubAdapter, load_env
 
 async def main():
     # 1. Konfigürasyonu yükle
@@ -70,7 +70,7 @@ async def main():
     
     github_adapter = GitHubAdapter(
         name="github",
-        config={"LOGPORT_GITHUB_TOKEN": env.get("LOGPORT_GITHUB_TOKEN")}
+        config={"LOGSHIFT_GITHUB_TOKEN": env.get("LOGSHIFT_GITHUB_TOKEN")}
     )
     
     # Adaptörü kaydet
@@ -78,7 +78,7 @@ async def main():
     
     # 3. Log Verisi Hazırla
     logs = [
-        {"timestamp": "2026-07-19T19:00:00Z", "level": "INFO", "message": "Logport initialized."},
+        {"timestamp": "2026-07-19T19:00:00Z", "level": "INFO", "message": "Logshift initialized."},
         {"timestamp": "2026-07-19T19:05:00Z", "level": "ERROR", "message": "Connection lost to Supabase."}
     ]
     
@@ -91,7 +91,7 @@ async def main():
         logs=logs,
         targets=targets,
         path="archives/2026-07-19_log.json",
-        message="chore: auto-archive logs via logport"
+        message="chore: auto-archive logs via logshift"
     )
     
     print("Taşıma Raporu:", report)

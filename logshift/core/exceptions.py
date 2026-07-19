@@ -1,13 +1,13 @@
-class LogportError(Exception):
-    """Base exception for all logport related errors."""
+class LogshiftError(Exception):
+    """Base exception for all logshift related errors."""
     pass
 
 
-class ConfigurationError(LogportError):
+class ConfigurationError(LogshiftError):
     """Raised when there is a configuration-related error (e.g. missing environment variables)."""
     pass
 
 
-class AdapterError(LogportError):
+class AdapterError(LogshiftError):
     """Raised when a TransportAdapter fails to ship/archive logs."""
     pass

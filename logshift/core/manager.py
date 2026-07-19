@@ -1,10 +1,10 @@
 import asyncio
 import logging
 from typing import Any, Dict, List, Set
-from logport.core.adapter import TransportAdapter
-from logport.core.exceptions import AdapterError
+from logshift.core.adapter import TransportAdapter
+from logshift.core.exceptions import AdapterError
 
-logger = logging.getLogger("logport.manager")
+logger = logging.getLogger("logshift.manager")
 
 
 class LogManager:

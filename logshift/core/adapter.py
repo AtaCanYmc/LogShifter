@@ -7,7 +7,7 @@ class TransportAdapter(ABC):
     Abstract base class for all transport adapters.
     
     Any new storage/notification target must implement this class
-    and register with LogManager to be used in logport SDK.
+    and register with LogManager to be used in logshift SDK.
     """
 
     def __init__(self, name: str, config: Dict[str, Any] | None = None) -> None:
