@@ -52,9 +52,18 @@ class LogManager:
     with built-in dry_run capability.
     """
 
-    def __init__(self, dry_run: bool = False) -> None:
+    def __init__(
+        self,
+        dry_run: bool = False,
+        max_retries: int = 3,
+        initial_delay: float = 1.0,
+        backoff: float = 2.0
+    ) -> None:
         self._adapters: Dict[str, TransportAdapter] = {}
         self.dry_run = dry_run
+        self.max_retries = max_retries
+        self.initial_delay = initial_delay
+        self.backoff = backoff
 
     def register_adapter(self, adapter: TransportAdapter) -> None:
         if adapter.name in self._adapters:
@@ -115,11 +124,28 @@ class LogManager:
         target: str,
         **kwargs: Any
     ) -> bool:
-        try:
-            # Inject dry_run parameter into adapter's ship arguments
-            return await adapter.ship(logs, target, dry_run=self.dry_run, **kwargs)
-        except Exception as e:
-            raise AdapterError(f"Error in adapter '{adapter.name}': {e}") from e
+        delay = self.initial_delay
+        last_exception = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                # Inject dry_run parameter into adapter's ship arguments
+                return await adapter.ship(logs, target, dry_run=self.dry_run, **kwargs)
+            except Exception as e:
+                last_exception = e
+                if attempt < self.max_retries and not self.dry_run:
+                    logger.warning(
+                        f"Adapter '{adapter.name}' failed on attempt {attempt}/{self.max_retries}. "
+                        f"Retrying in {delay}s... Error: {e}"
+                    )
+                    await asyncio.sleep(delay)
+                    delay *= self.backoff
+                else:
+                    logger.error(
+                        f"Adapter '{adapter.name}' failed permanently after {attempt} attempts."
+                    )
+
+        raise AdapterError(f"Error in adapter '{adapter.name}': {last_exception}") from last_exception
 
 
 # Cursor-Based Log Fetcher

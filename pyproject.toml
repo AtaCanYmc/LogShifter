@@ -27,6 +27,8 @@ dependencies = [
     "pyyaml>=6.0",
     "pydantic-settings>=2.0.0",
     "pydantic>=2.0.0",
+    "gspread>=5.10.0",
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
