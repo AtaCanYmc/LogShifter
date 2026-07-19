@@ -46,12 +46,18 @@ class SheetsAdapter(TransportAdapter):
         # Format logs to matching rows
         rows: List[List[Any]] = []
         for log in logs:
+            attributes = log.get("attributes", {})
             row = [
-                str(log.get("id", "")),
-                str(log.get("created_at", log.get("timestamp", ""))),
-                str(log.get("level", "")),
-                str(log.get("message", "")),
-                str({k: v for k, v in log.items() if k not in ("id", "created_at", "timestamp", "level", "message")})
+                str(attributes.get("id", "")),
+                str(log.get("timestamp", "")),
+                str(log.get("severity_text", "")),
+                str(log.get("body", "")),
+                str({
+                    "attributes": attributes,
+                    "severity_number": log.get("severity_number"),
+                    "trace_id": log.get("trace_id"),
+                    "span_id": log.get("span_id")
+                })
             ]
             rows.append(row)
 

@@ -36,6 +36,7 @@ It is designed to solve database log retention limitations (e.g. Supabase Free T
 - **No Global Env Files:** Designed to be clean and reusable—every configuration, key, and endpoint is passed strictly as explicit function arguments or CLI parameters.
 - **Continuous Integration (CI):** Out-of-the-box workflows validating code formatting (black), style/lints (ruff), type checks (mypy), and compatibility testing matrix (pytest).
 - **Discord Rate-Limit Handling:** Seamless HTTP 429 backoff retry loops using dynamic `retry_after` header configurations.
+- **OpenTelemetry Standard Format:** Automatically maps raw database log rows into the standardized OpenTelemetry (OTLP) log record data structure (including `timestamp`, `severity_text`, `severity_number`, `body`, `attributes`, `trace_id`, and `span_id`), making logs instantly compatible with OTel collectors.
 - **Dry-Run Mode:** Test your setup safely without modifying databases, committing code, or triggering active alerts.
 
 ---

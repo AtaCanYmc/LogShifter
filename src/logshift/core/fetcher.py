@@ -73,7 +73,10 @@ class LogFetcher:
                 if not data:
                     break
 
-                all_logs.extend(data)
+                # Map data to OpenTelemetry Log Record format
+                mapped_data = [self._to_opentelemetry_format(row, date_column) for row in data]
+
+                all_logs.extend(mapped_data)
                 logger.info(f"Fetched {len(data)} records. Last cursor value: {last_id}. Total so far: {len(all_logs)}")
 
                 last_record = data[-1]
@@ -86,3 +89,39 @@ class LogFetcher:
 
         except Exception as e:
             raise LogshiftError(f"Failed to fetch logs from Supabase: {e}") from e
+
+    def _to_opentelemetry_format(self, row: Dict[str, Any], date_column: str) -> Dict[str, Any]:
+        """
+        Converts a raw database row into OpenTelemetry Log Record format.
+        """
+        # Determine log level
+        level = str(row.get("level", "INFO")).upper()
+        
+        # Severity number mapping
+        severity_map = {
+            "TRACE": 1, "VERBOSE": 1,
+            "DEBUG": 5,
+            "INFO": 9,
+            "WARN": 13, "WARNING": 13,
+            "ERROR": 17,
+            "FATAL": 21, "CRITICAL": 21
+        }
+        severity_number = severity_map.get(level, 9)
+
+        # Body
+        body = row.get("message") or row.get("body") or ""
+
+        # Attributes (all keys except mapped metadata fields)
+        exclude_keys = {date_column, "level", "message", "body", "trace_id", "span_id"}
+        attributes = {k: v for k, v in row.items() if k not in exclude_keys}
+
+        return {
+            "timestamp": row.get(date_column, ""),
+            "severity_text": level,
+            "severity_number": severity_number,
+            "body": body,
+            "attributes": attributes,
+            "trace_id": row.get("trace_id", ""),
+            "span_id": row.get("span_id", "")
+        }
+
