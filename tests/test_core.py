@@ -1,6 +1,7 @@
 import pytest
-from logshift.core.exceptions import LogshiftError, AdapterError
+
 from logshift.core.adapter import TransportAdapter
+from logshift.core.exceptions import AdapterError, LogshiftError
 from logshift.core.manager import LogManager
 
 

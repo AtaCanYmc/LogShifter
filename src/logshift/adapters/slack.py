@@ -2,7 +2,9 @@ import asyncio
 import json
 import logging
 from typing import Any, Dict, List
+
 import httpx
+
 from logshift.core.adapter import TransportAdapter
 from logshift.core.exceptions import AdapterError
 

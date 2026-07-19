@@ -18,7 +18,7 @@ class LogFetcher:
             raise ConfigurationError("Supabase URL and API Key must be provided.")
 
         # Defer import to keep core lightweight
-        from supabase import create_client, Client
+        from supabase import Client, create_client
 
         self.client: Client = create_client(supabase_url, supabase_key)
 

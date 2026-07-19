@@ -1,15 +1,16 @@
 import asyncio
-import click
 import logging
 import sys
 from datetime import datetime
 
-from logshift.core import LogManager, LogFetcher
+import click
+
+from logshift.adapters.discord import DiscordAdapter
 from logshift.adapters.github import GitHubAdapter
 from logshift.adapters.sheets import SheetsAdapter
-from logshift.adapters.telegram import TelegramAdapter
-from logshift.adapters.discord import DiscordAdapter
 from logshift.adapters.slack import SlackAdapter
+from logshift.adapters.telegram import TelegramAdapter
+from logshift.core import LogFetcher, LogManager
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
