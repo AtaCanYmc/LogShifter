@@ -1,6 +1,6 @@
 # logshift (formerly logport)
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
+[![Build Status](https://github.com/username/LogShifter/actions/workflows/ci.yml/badge.svg)](https://github.com/username/LogShifter/actions)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue.svg)](#)
 
@@ -33,6 +33,7 @@ It is designed to solve database log retention limitations (e.g. Supabase Free T
 - **Cursor-Based Pagination:** Efficiently query millions of rows from Supabase using ID-based cursor pagination instead of heavy OFFSET calls.
 - **Fail-Safe Retries:** Automatic network error resilience using exponential backoff retry loops.
 - **No Global Env Files:** Designed to be clean and reusable—every configuration, key, and endpoint is passed strictly as explicit function arguments or CLI parameters.
+- **Continuous Integration (CI):** Out-of-the-box workflows validating code formatting (black), style/lints (ruff), type checks (mypy), and compatibility testing matrix (pytest).
 - **Dry-Run Mode:** Test your setup safely without modifying databases, committing code, or triggering active alerts.
 
 ---
@@ -41,10 +42,19 @@ It is designed to solve database log retention limitations (e.g. Supabase Free T
 
 ```text
 logshift/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml          # Continuous Integration workflow (Lint, Format, Test)
+│       └── main.yml        # Logshift cron archiving workflow
 ├── src/
 │   └── logshift/
 │       ├── __init__.py
-│       ├── core.py         # LogManager, LogFetcher, and base classes
+│       ├── core/           # Modularized Core Engines
+│       │   ├── __init__.py
+│       │   ├── adapter.py  # Abstract TransportAdapter base class
+│       │   ├── exceptions.py # Structured Custom Exceptions
+│       │   ├── fetcher.py  # Cursor-based Supabase LogFetcher
+│       │   └── manager.py  # Orchestrating LogManager
 │       └── adapters/       # Independent transport adapters
 │           ├── __init__.py
 │           ├── github.py   # GitPython based repository archiver
