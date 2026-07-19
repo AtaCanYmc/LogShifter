@@ -25,6 +25,8 @@ dependencies = [
     "supabase>=2.0.0",
     "click>=8.0.0",
     "pyyaml>=6.0",
+    "pydantic-settings>=2.0.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -40,7 +42,7 @@ dev = [
 logshift = "logshift.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["logshift*"]
 
 [tool.black]

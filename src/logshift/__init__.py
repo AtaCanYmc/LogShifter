@@ -1,7 +1,11 @@
-from logshift.core.adapter import TransportAdapter
-from logshift.core.manager import LogManager
-from logshift.core.fetcher import LogFetcher
-from logshift.core.exceptions import LogshiftError, ConfigurationError, AdapterError
+from logshift.core import (
+    TransportAdapter,
+    LogManager,
+    LogFetcher,
+    LogshiftError,
+    ConfigurationError,
+    AdapterError,
+)
 from logshift.adapters.github import GitHubAdapter
 
 __version__ = "0.1.0"
