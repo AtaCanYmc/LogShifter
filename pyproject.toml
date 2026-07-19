@@ -20,7 +20,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "GitPython>=3.1.0",
+    "supabase>=2.0.0",
+    "click>=8.0.0",
+    "pyyaml>=6.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -30,6 +35,9 @@ dev = [
     "mypy>=1.0.0",
     "ruff>=0.0.200",
 ]
+
+[project.scripts]
+logshift = "logshift.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

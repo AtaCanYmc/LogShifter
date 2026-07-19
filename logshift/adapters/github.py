@@ -1,9 +1,8 @@
-import asyncio
-import base64
+import os
 import json
 import logging
-import urllib.request
-import urllib.error
+import shutil
+import tempfile
 from typing import Any, Dict, List
 from logshift.core.adapter import TransportAdapter
 from logshift.core.exceptions import AdapterError
@@ -13,36 +12,35 @@ logger = logging.getLogger("logshift.adapters.github")
 
 class GitHubAdapter(TransportAdapter):
     """
-    GitHubAdapter commits and pushes log files directly to a GitHub Repository
-    using the GitHub Contents API.
-    
-    Configuration is explicitly passed via parameters or constructor config.
+    GitHubAdapter writes log data into a JSON file, commits and pushes 
+    changes to a GitHub Repository using GitPython.
     """
 
     def __init__(self, token: str, name: str = "github", config: Dict[str, Any] | None = None) -> None:
         """
-        Initializes the GitHubAdapter with required credentials.
-        
         Args:
             token: GitHub Personal Access Token.
             name: Name of the adapter instance.
-            config: Additional optional configurations.
+            config: Optional config dict.
         """
         super().__init__(name, config)
         self.token = token
 
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
-        Ships logs to a GitHub repository contents.
+        Ships logs by cloning repository, writing JSON file, committing and pushing.
         
         Args:
-            logs: List of log dictionaries to be serialized as JSON.
-            target: The repository path in the format "owner/repo".
-            **kwargs: 
-                - path: The file path within the repo (default: "logs/archive.json").
-                - message: Commit message (default: "chore: archive logs [logshift]").
+            logs: List of log dictionaries.
+            target: GitHub repository in the format "owner/repo".
+            **kwargs:
+                - path: Relative path inside the repo (default: "logs/archive.json").
+                - message: Commit message.
                 - branch: Branch name (default: "main").
         """
+        # Defer import to avoid GitPython import overhead when not using it
+        import git
+
         if not self.token:
             raise AdapterError("GitHub Personal Access Token is required.")
 
@@ -50,81 +48,64 @@ class GitHubAdapter(TransportAdapter):
             raise AdapterError("Target must be in the format 'owner/repo'.")
 
         path = kwargs.get("path", "logs/archive.json")
-        commit_message = kwargs.get("message", "chore: archive logs [logshift]")
+        commit_message = kwargs.get("message", "Archive logs")
         branch = kwargs.get("branch", "main")
 
-        # Format logs as pretty JSON
-        content_str = json.dumps(logs, indent=2, ensure_ascii=False)
-        content_bytes = content_str.encode("utf-8")
-        content_b64 = base64.b64encode(content_bytes).decode("utf-8")
+        # Format URL with token for HTTP authentication
+        repo_url = f"https://x-access-token:{self.token}@github.com/{target}.git"
 
-        url = f"https://api.github.com/repos/{target}/contents/{path}"
-
-        # Run API calls in synchronous executor using asyncio.to_thread to keep it async
-        return await asyncio.to_thread(
-            self._execute_github_push, url, content_b64, commit_message, branch
-        )
-
-    def _execute_github_push(self, url: str, content_b64: str, message: str, branch: str) -> bool:
-        # Get existing file sha if it exists
-        sha = self._get_existing_file_sha(url, branch)
-
-        payload = {
-            "message": message,
-            "content": content_b64,
-            "branch": branch,
-        }
-        if sha:
-            payload["sha"] = sha
-
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {self.token}",
-                "Accept": "application/vnd.github+json",
-                "Content-Type": "application/json",
-                "User-Agent": "logshift-sdk",
-            },
-            method="PUT",
-        )
-
+        # Create a temp directory for cloning
+        temp_dir = tempfile.mkdtemp()
         try:
-            with urllib.request.urlopen(req) as response:
-                if response.status in (200, 201):
-                    logger.info(f"Successfully committed logs to GitHub: {url}")
-                    return True
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode("utf-8")
-            logger.error(f"GitHub API Error details: {error_body}")
-            raise AdapterError(f"GitHub API returned HTTP {e.code}: {e.reason}") from e
-        except Exception as e:
-            raise AdapterError(f"Failed to push to GitHub: {e}") from e
+            logger.info(f"Cloning repository {target} to temporary folder...")
+            # Clone repo
+            repo = git.Repo.clone_from(repo_url, temp_dir, branch=branch)
 
-        return False
+            # Target log file path
+            file_abs_path = os.path.join(temp_dir, path)
+            os.makedirs(os.path.dirname(file_abs_path), exist_ok=True)
 
-    def _get_existing_file_sha(self, url: str, branch: str) -> str | None:
-        """Fetch current file SHA if file already exists in repository."""
-        get_url = f"{url}?ref={branch}"
-        req = urllib.request.Request(
-            get_url,
-            headers={
-                "Authorization": f"Bearer {self.token}",
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "logshift-sdk",
-            },
-            method="GET",
-        )
-        try:
-            with urllib.request.urlopen(req) as response:
-                if response.status == 200:
-                    data = json.loads(response.read().decode("utf-8"))
-                    return data.get("sha")
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                # File doesn't exist yet, this is expected for the first run
-                return None
-            logger.warning(f"Error checking file SHA (HTTP {e.code}): {e.reason}")
+            # Load existing logs or initialize new list
+            existing_logs: List[Dict[str, Any]] = []
+            if os.path.exists(file_abs_path):
+                try:
+                    with open(file_abs_path, "r", encoding="utf-8") as f:
+                        existing_logs = json.load(f)
+                        if not isinstance(existing_logs, list):
+                            existing_logs = [existing_logs]
+                except Exception as e:
+                    logger.warning(f"Failed to read existing log file, starting fresh: {e}")
+
+            # Append new logs
+            existing_logs.extend(logs)
+
+            # Save file back
+            with open(file_abs_path, "w", encoding="utf-8") as f:
+                json.dump(existing_logs, f, indent=2, ensure_ascii=False)
+
+            # Check if there are changes
+            if not repo.is_dirty() and not repo.untracked_files:
+                logger.info("No new log changes detected. Repository is up-to-date.")
+                return True
+
+            # Git add
+            repo.index.add([path])
+
+            # Git commit
+            repo.index.commit(commit_message)
+
+            # Git push
+            logger.info("Pushing committed logs to remote...")
+            repo.remotes.origin.push()
+            logger.info("Successfully pushed logs to GitHub.")
+            return True
+
+        except git.exc.GitCommandError as e:
+            # Mask the token in errors if it's in the command output
+            err_msg = str(e).replace(self.token, "********")
+            raise AdapterError(f"Git command failed: {err_msg}") from e
         except Exception as e:
-            logger.warning(f"Error checking file SHA: {e}")
-        return None
+            raise AdapterError(f"Failed to push logs to GitHub: {e}") from e
+        finally:
+            # Cleanup temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
