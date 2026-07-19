@@ -1,31 +1,36 @@
 # Logshift SDK
 
-Logshift, Supabase gibi veri kaynaklarından belirli zamanlarda (cron) log verilerini çekip, bunları aynı anda veya seçmeli olarak farklı depolama ve bildirim servislerine (GitHub, Telegram, Google Sheets) güvenli şekilde aktaran ve arşivleyen çoklu hedefli, modüler bir Python SDK'sıdır.
+Logshift, Supabase gibi veri kaynaklarından belirli zamanlarda (cron) log verilerini çekip, bunları aynı anda veya seçmeli olarak farklı depolama ve bildirim servislerine (GitHub, Google Sheets, Telegram) güvenli şekilde aktaran ve arşivleyen çoklu hedefli, modüler bir Python SDK'sıdır.
 
 ## 🚀 Temel Özellikler
 
-- **Strategy Pattern:** Her taşıma yöntemi (`TransportAdapter`) için tamamen bağımsız, genişletilebilir ve modüler sınıflar.
-- **Open/Closed Prensibi:** Mevcut kütüphane koduna dokunmadan yeni taşıma adaptörleri ekleyebilme.
-- **Modern Python:** Tamamen `async/await` desteği, güçlü tip belirteçleri (type hints) ve temiz mimari.
-- **Modüler Yapı:** `core` ve `adapters` paket ayrımı.
-- **Explicit Parametre Yönetimi:** Dış bağımlılık oluşturabilecek `.env` veya global dosya okuma zorunlulukları yerine, tüm kimlik ve yapılandırma bilgileri doğrudan parametre olarak sınıflara geçilir.
-- **Genişletilebilirlik:** Gelecekte MCP (Model Context Protocol) sunucusu olarak çalışabilecek altyapıya uygun tasarım.
+- **Multi-Channel Transport:** Logları aynı anda veya seçmeli olarak GitHub, Google Sheets ve Telegram kanallarına aktarabilme.
+- **Strategy Pattern & Open/Closed:** Her taşıma kanalı (`TransportAdapter`) için tamamen bağımsız, genişletilebilir soyut mimari.
+- **Cursor-Based Pagination:** Supabase'den logları çekerken veritabanı performansını optimize eden, hafıza limitlerini aşmayan ID bazlı cursor sayfalaması.
+- **Güvenli Konfigürasyon:** `pydantic-settings` tabanlı, ortam değişkenleri (.env) üzerinden otomatik doğrulanan ve yüklenen güvenli yapılandırma.
+- **Hata Toleransı (Fallback & Retry):** Geçici ağ hatalarına karşı log gönderim adımlarında üstel geri çekilme (exponential backoff) destekli otomatik yeniden deneme (retry) mekanizması.
+- **Dry-Run Modu:** Veri kaybını önlemek için gerçekte hiçbir kanala işlem yapmadan çalışmayı simüle eden `--dry-run` test sürüşü modu.
 
 ---
 
 ## 📁 Dosya Dizin Yapısı
 
 ```text
-logshift/
-├── __init__.py         # Paket dışa aktarımları
-├── core/
-│   ├── __init__.py
-│   ├── adapter.py      # Soyut TransportAdapter Sınıfı
-│   ├── manager.py      # Çoklu hedef yönetimi yapan LogManager
-│   └── exceptions.py   # Özel Hata Sınıfları
-└── adapters/
-    ├── __init__.py
-    └── github.py       # GitHub Contents API Adaptörü
+LogShifter/
+├── src/
+│   └── logshift/
+│       ├── __init__.py
+│       ├── config.py       # Pydantic Settings yapılandırması
+│       ├── core.py         # LogManager, LogFetcher ve Taban Adaptör sınıfı
+│       └── adapters/
+│           ├── __init__.py
+│           ├── github.py   # GitPython tabanlı GitHub arşiv adaptörü
+│           ├── sheets.py   # gspread tabanlı Google Sheets adaptörü
+│           └── telegram.py # httpx tabanlı Telegram bildirim adaptörü
+├── tests/                  # Unit testler
+├── pyproject.toml          # Paket tanımları, araçlar ve bağımlılıklar
+├── requirements.txt        # Geliştirme bağımlılık listesi
+└── .env.example            # Örnek konfigürasyon dosyası
 ```
 
 ---
@@ -33,51 +38,60 @@ logshift/
 ## 🛠️ Kurulum ve Çalıştırma
 
 ### 1. Sanal Ortam Kurulumu
-Proje klasöründe bir sanal ortam oluşturun ve aktif edin:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+pip install -e .
+```
+
+### 2. Konfigürasyon
+`.env.example` dosyasını `.env` olarak kopyalayın ve gerekli kimlik bilgilerini doldurun:
+```bash
+cp .env.example .env
 ```
 
 ---
 
-## 💻 Kullanım Örneği
+## 💻 CLI Kullanımı
+
+### Tüm Kanallara Dry-Run (Test Sürüşü) Modunda Gönderim
+Gerçek veritabanına ve dış kanallara dokunmadan simülasyon çıktısı üretir:
+```bash
+logshift --dry-run archive --source supabase --dest github,sheets,telegram
+```
+
+### Belirli Kanallara Gerçek Zamanlı Arşivleme
+```bash
+logshift archive --source supabase --dest github,telegram
+```
+
+---
+
+## 👨‍💻 Kod Üzerinden Kullanım
 
 ```python
 import asyncio
-from logshift import LogManager, GitHubAdapter
+from logshift.core import LogManager
+from logshift.adapters.github import GitHubAdapter
+from logshift.adapters.telegram import TelegramAdapter
 
 async def main():
-    # 1. LogManager ve Adaptörleri Oluştur (Parametreleri açıkça geçiyoruz)
-    manager = LogManager()
+    # Manager oluştur (Örn: 4 deneme, üstel geri çekilme aktif)
+    manager = LogManager(dry_run=False, max_retries=4, initial_delay=1.0)
     
-    github_adapter = GitHubAdapter(
-        token="ghp_yourPersonalAccessTokenHere",
-        name="github"
-    )
+    # Adaptörleri kaydet
+    manager.register_adapter(GitHubAdapter(token="your_github_token"))
+    manager.register_adapter(TelegramAdapter(bot_token="bot_token", chat_id="chat_id"))
     
-    # Adaptörü kaydet
-    manager.register_adapter(github_adapter)
-    
-    # 2. Log Verisi Hazırla
-    logs = [
-        {"timestamp": "2026-07-19T19:00:00Z", "level": "INFO", "message": "Logshift initialized."},
-        {"timestamp": "2026-07-19T19:05:00Z", "level": "ERROR", "message": "Connection lost to Supabase."}
-    ]
-    
-    # 3. Seçmeli veya Çoklu Gönderim Yap
+    # Logları gönder
+    logs = [{"id": 101, "level": "ERROR", "message": "Critical DB connection failure"}]
     targets = {
-        "github": "username/my-logs-repo"
+        "github": "myuser/my-repo",
+        "telegram": "chat_id"
     }
     
-    report = await manager.ship(
-        logs=logs,
-        targets=targets,
-        path="archives/2026-07-19_log.json",
-        message="chore: auto-archive logs via logshift"
-    )
-    
-    print("Taşıma Raporu:", report)
+    report = await manager.ship(logs=logs, targets=targets)
+    print("Shipment Report:", report)
 
 if __name__ == "__main__":
     asyncio.run(main())
