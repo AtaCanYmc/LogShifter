@@ -1,0 +1,45 @@
+name: Logshift Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  ci-pipeline:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip" # Caches pip dependencies automatically
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Code Formatting Check (Black)
+        run: |
+          black --check src/ tests/
+
+      - name: Linting Check (Ruff)
+        run: |
+          ruff check src/ tests/
+
+      - name: Static Type Check (Mypy)
+        run: |
+          mypy src/
+
+      - name: Run Unit Tests (Pytest)
+        run: |
+          pytest tests/
