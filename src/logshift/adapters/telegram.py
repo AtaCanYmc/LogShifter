@@ -2,7 +2,8 @@ import json
 import logging
 from typing import Any, Dict, List
 import httpx
-from logshift.core import TransportAdapter, AdapterError
+from base import TransportAdapter
+from logshift.core.exceptions import AdapterError
 
 logger = logging.getLogger("logshift.adapters.telegram")
 

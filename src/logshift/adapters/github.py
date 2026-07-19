@@ -4,8 +4,8 @@ import logging
 import shutil
 import tempfile
 from typing import Any, Dict, List
-from logshift.core import TransportAdapter
-from logshift.core import AdapterError
+from base import TransportAdapter
+from logshift.core.exceptions import AdapterError
 
 logger = logging.getLogger("logshift.adapters.github")
 
