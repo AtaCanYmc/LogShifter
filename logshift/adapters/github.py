@@ -16,20 +16,27 @@ class GitHubAdapter(TransportAdapter):
     GitHubAdapter commits and pushes log files directly to a GitHub Repository
     using the GitHub Contents API.
     
-    Required Config:
-        - token (or LOGSHIFT_GITHUB_TOKEN env): GitHub Personal Access Token
+    Configuration is explicitly passed via parameters or constructor config.
     """
 
-    def __init__(self, name: str = "github", config: Dict[str, Any] | None = None) -> None:
+    def __init__(self, token: str, name: str = "github", config: Dict[str, Any] | None = None) -> None:
+        """
+        Initializes the GitHubAdapter with required credentials.
+        
+        Args:
+            token: GitHub Personal Access Token.
+            name: Name of the adapter instance.
+            config: Additional optional configurations.
+        """
         super().__init__(name, config)
-        self.token = self.config.get("token") or self.config.get("LOGSHIFT_GITHUB_TOKEN")
+        self.token = token
 
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
         Ships logs to a GitHub repository contents.
         
         Args:
-            logs: List of log dictionaries to be serialized as JSON/YAML.
+            logs: List of log dictionaries to be serialized as JSON.
             target: The repository path in the format "owner/repo".
             **kwargs: 
                 - path: The file path within the repo (default: "logs/archive.json").
@@ -37,7 +44,7 @@ class GitHubAdapter(TransportAdapter):
                 - branch: Branch name (default: "main").
         """
         if not self.token:
-            raise AdapterError("GitHub Personal Access Token is missing from configuration.")
+            raise AdapterError("GitHub Personal Access Token is required.")
 
         if "/" not in target:
             raise AdapterError("Target must be in the format 'owner/repo'.")

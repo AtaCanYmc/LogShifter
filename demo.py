@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from logshift import LogManager, GitHubAdapter, load_env
+from logshift import LogManager, GitHubAdapter
 
 # Setup logging to see what's happening
 logging.basicConfig(
@@ -11,11 +11,9 @@ logging.basicConfig(
 )
 
 async def main():
-    # 1. Load config from .env
-    print("--- 1. Loading Environment Configuration ---")
-    env = load_env()
-    github_token = env.get("LOGSHIFT_GITHUB_TOKEN", "mock-token-12345")
-    print(f"Loaded token (first 5 chars): {github_token[:5]}...")
+    # 1. Credentials are explicitly defined/passed as parameters
+    print("--- 1. Setting Up Explicit Parameters ---")
+    github_token = "mock-github-token-12345"
 
     # 2. Instantiate LogManager
     print("\n--- 2. Instantiating LogManager ---")
@@ -23,10 +21,10 @@ async def main():
 
     # 3. Register GitHubAdapter
     print("\n--- 3. Registering GitHubAdapter ---")
-    # We configure it with our loaded token
+    # We configure it directly by passing the token parameter
     github_adapter = GitHubAdapter(
-        name="github",
-        config={"LOGSHIFT_GITHUB_TOKEN": github_token}
+        token=github_token,
+        name="github"
     )
     manager.register_adapter(github_adapter)
     print(f"Registered adapters: {manager.registered_adapters}")
