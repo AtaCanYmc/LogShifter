@@ -2,9 +2,8 @@ import asyncio
 import logging
 from typing import Any, Dict, List
 
-from base import TransportAdapter
-
-from ..core.exceptions import AdapterError
+from logshift.core.adapter import TransportAdapter
+from logshift.core.exceptions import AdapterError
 
 logger = logging.getLogger("logshift.adapters.sheets")
 

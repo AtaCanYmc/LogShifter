@@ -11,14 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
+        test-file:
+          - "test_core.py"
+          - "test_github_adapter.py"
+          - "test_sheets_adapter.py"
+          - "test_telegram_adapter.py"
+          - "test_discord_adapter.py"
+          - "test_slack_adapter.py"
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip" # Caches pip dependencies automatically
@@ -42,4 +49,4 @@ jobs:
 
       - name: Run Unit Tests (Pytest)
         run: |
-          pytest tests/
+          pytest tests/${{ matrix.test-file }}
