@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Check for updates to pip dependencies weekly
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Check for updates to GitHub Actions workflows weekly
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
