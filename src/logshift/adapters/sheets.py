@@ -92,15 +92,13 @@ class SheetsAdapter(TransportAdapter):
             try:
                 wks = sh.worksheet(self.worksheet_name)
             except gspread.exceptions.WorksheetNotFound:
-                wks = sh.add_worksheet(
-                    title=self.worksheet_name, rows="1000", cols=str(len(headers))
-                )
+                wks = sh.add_worksheet(title=self.worksheet_name, rows=1000, cols=len(headers))
                 # Append headers
                 wks.append_row(headers)
                 logger.info(f"Created new worksheet '{self.worksheet_name}' with headers.")
 
             # Batch append rows
-            wks.append_rows(rows, value_input_option="USER_ENTERED")
+            wks.append_rows(rows, value_input_option="USER_ENTERED")  # type: ignore[arg-type]
             logger.info(f"Successfully appended {len(rows)} log rows to Google Sheets.")
             return True
         except Exception as e:

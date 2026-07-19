@@ -41,7 +41,8 @@ def sanitize_exception(exctype: type, value: BaseException, tb: Any) -> None:
         # Mask Telegram bot tokens
         line = re.sub(r"bot\d+:\w+", "bot[MASKED]", line)
         sanitized.append(line)
-    sys.__stderr__.write("".join(sanitized))
+    if sys.__stderr__ is not None:
+        sys.__stderr__.write("".join(sanitized))
 
 
 # Register exception hook globally

@@ -127,7 +127,7 @@ class LogFetcher:
         query = query.order(cursor_column, desc=False).limit(chunk_size)
 
         response = query.execute()
-        return response.data
+        return response.data  # type: ignore
 
     def _to_opentelemetry_format(self, row: Dict[str, Any], date_column: str) -> Dict[str, Any]:
         """

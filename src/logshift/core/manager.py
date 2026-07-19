@@ -102,7 +102,7 @@ class LogManager:
                 logger.error(f"Adapter '{name}' failed with exception: {result}")
                 report[name] = False
             else:
-                report[name] = result
+                report[name] = bool(result)
 
         return report
 
