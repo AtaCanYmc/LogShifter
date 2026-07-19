@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 from datetime import datetime
+from typing import Any
 
 import click
 
@@ -15,6 +16,28 @@ from logshift.core import LogFetcher, LogManager
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("logshift.cli")
+
+
+def common_options(f: Any) -> Any:
+    """Decorator sharing common Supabase configurations across subcommands."""
+    f = click.option("--supabase-url", help="Supabase project URL.", required=True)(f)
+    f = click.option("--supabase-key", help="Supabase API key / service role key.", required=True)(
+        f
+    )
+    f = click.option(
+        "--supabase-table", default="logs", help="Supabase logs table name.", show_default=True
+    )(f)
+    f = click.option(
+        "--supabase-date-col",
+        default="created_at",
+        help="Database date column for filtering.",
+        show_default=True,
+    )(f)
+    f = click.option(
+        "--start-date", help="Filter logs starting from this ISO timestamp (greater than)."
+    )(f)
+    f = click.option("--end-date", help="Filter logs up to this ISO timestamp (less than).")(f)
+    return f
 
 
 @click.group()
@@ -31,36 +54,9 @@ def cli(ctx: click.Context, dry_run: bool) -> None:
 
 
 @cli.command()
-@click.option(
-    "--source",
-    "-s",
-    type=click.Choice(["supabase"]),
-    default="supabase",
-    help="Log source database.",
-    show_default=True,
-)
-@click.option(
-    "--dest",
-    "-d",
-    default="github",
-    help="Log destination repository/storage (comma-separated, e.g. github,sheets,telegram).",
-    show_default=True,
-)
-# Supabase Parameters
-@click.option("--supabase-url", help="Supabase project URL.", required=True)
-@click.option("--supabase-key", help="Supabase API key / service role key.", required=True)
-@click.option(
-    "--supabase-table", default="logs", help="Supabase logs table name.", show_default=True
-)
-@click.option(
-    "--supabase-date-col",
-    default="created_at",
-    help="Database date column for filtering.",
-    show_default=True,
-)
-# GitHub Parameters
-@click.option("--github-token", help="GitHub Personal Access Token.")
-@click.option("--github-repo", help="Target GitHub repository (format: owner/repo).")
+@common_options
+@click.option("--github-token", help="GitHub Personal Access Token.", required=True)
+@click.option("--github-repo", help="Target GitHub repository (format: owner/repo).", required=True)
 @click.option(
     "--github-path",
     default="logs/archive.json",
@@ -68,95 +64,197 @@ def cli(ctx: click.Context, dry_run: bool) -> None:
     show_default=True,
 )
 @click.option("--github-branch", default="main", help="Target branch name.", show_default=True)
-# Google Sheets Parameters
-@click.option("--google-creds", help="Path to Google Service Account credentials.json file.")
-@click.option("--google-sheet-id", help="Google Spreadsheet ID key.")
-@click.option(
-    "--google-worksheet", default="Logs", help="Target worksheet name.", show_default=True
-)
-# Telegram Parameters
-@click.option("--telegram-token", help="Telegram Bot Token.")
-@click.option("--telegram-chat-id", help="Telegram Chat ID.")
-# Discord Parameters
-@click.option("--discord-webhook", help="Discord Webhook URL.")
-# Slack Parameters
-@click.option("--slack-webhook", help="Slack Webhook URL.")
-# Date Filters
-@click.option("--start-date", help="Filter logs starting from this ISO timestamp (greater than).")
-@click.option("--end-date", help="Filter logs up to this ISO timestamp (less than).")
 @click.pass_context
-def archive(
+def github(
     ctx: click.Context,
-    source: str,
-    dest: str,
     supabase_url: str,
     supabase_key: str,
     supabase_table: str,
     supabase_date_col: str,
-    github_token: str | None,
-    github_repo: str | None,
-    github_path: str,
-    github_branch: str,
-    google_creds: str | None,
-    google_sheet_id: str | None,
-    google_worksheet: str,
-    telegram_token: str | None,
-    telegram_chat_id: str | None,
-    discord_webhook: str | None,
-    slack_webhook: str | None,
     start_date: str | None,
     end_date: str | None,
+    github_token: str,
+    github_repo: str,
+    github_path: str,
+    github_branch: str,
 ) -> None:
-    """Extract logs from source database and archive them to the selected destination(s)."""
+    """Archive logs to a GitHub repository."""
     dry_run = ctx.obj["DRY_RUN"]
-
     asyncio.run(
         run_archive(
-            source=source,
-            dest=dest,
+            dest="github",
             supabase_url=supabase_url,
             supabase_key=supabase_key,
             supabase_table=supabase_table,
             supabase_date_col=supabase_date_col,
+            start_date=start_date,
+            end_date=end_date,
+            dry_run=dry_run,
             github_token=github_token,
             github_repo=github_repo,
             github_path=github_path,
             github_branch=github_branch,
-            google_creds=google_creds,
-            google_sheet_id=google_sheet_id,
-            google_worksheet=google_worksheet,
-            telegram_token=telegram_token,
-            telegram_chat_id=telegram_chat_id,
-            discord_webhook=discord_webhook,
-            slack_webhook=slack_webhook,
+        )
+    )
+
+
+@cli.command()
+@common_options
+@click.option(
+    "--google-creds", help="Path to Google Service Account credentials file.", required=True
+)
+@click.option("--google-sheet-id", help="Google Spreadsheet ID key.", required=True)
+@click.option(
+    "--google-worksheet", default="Logs", help="Target worksheet name.", show_default=True
+)
+@click.pass_context
+def sheets(
+    ctx: click.Context,
+    supabase_url: str,
+    supabase_key: str,
+    supabase_table: str,
+    supabase_date_col: str,
+    start_date: str | None,
+    end_date: str | None,
+    google_creds: str,
+    google_sheet_id: str,
+    google_worksheet: str,
+) -> None:
+    """Archive logs to a Google Spreadsheet."""
+    dry_run = ctx.obj["DRY_RUN"]
+    asyncio.run(
+        run_archive(
+            dest="sheets",
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
+            supabase_table=supabase_table,
+            supabase_date_col=supabase_date_col,
             start_date=start_date,
             end_date=end_date,
             dry_run=dry_run,
+            google_creds=google_creds,
+            google_sheet_id=google_sheet_id,
+            google_worksheet=google_worksheet,
+        )
+    )
+
+
+@cli.command()
+@common_options
+@click.option("--telegram-token", help="Telegram Bot Token.", required=True)
+@click.option("--telegram-chat-id", help="Telegram Chat ID.", required=True)
+@click.pass_context
+def telegram(
+    ctx: click.Context,
+    supabase_url: str,
+    supabase_key: str,
+    supabase_table: str,
+    supabase_date_col: str,
+    start_date: str | None,
+    end_date: str | None,
+    telegram_token: str,
+    telegram_chat_id: str,
+) -> None:
+    """Archive logs to a Telegram chat channel."""
+    dry_run = ctx.obj["DRY_RUN"]
+    asyncio.run(
+        run_archive(
+            dest="telegram",
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
+            supabase_table=supabase_table,
+            supabase_date_col=supabase_date_col,
+            start_date=start_date,
+            end_date=end_date,
+            dry_run=dry_run,
+            telegram_token=telegram_token,
+            telegram_chat_id=telegram_chat_id,
+        )
+    )
+
+
+@cli.command()
+@common_options
+@click.option("--discord-webhook", help="Discord Webhook URL.", required=True)
+@click.pass_context
+def discord(
+    ctx: click.Context,
+    supabase_url: str,
+    supabase_key: str,
+    supabase_table: str,
+    supabase_date_col: str,
+    start_date: str | None,
+    end_date: str | None,
+    discord_webhook: str,
+) -> None:
+    """Archive logs to a Discord webhook channel."""
+    dry_run = ctx.obj["DRY_RUN"]
+    asyncio.run(
+        run_archive(
+            dest="discord",
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
+            supabase_table=supabase_table,
+            supabase_date_col=supabase_date_col,
+            start_date=start_date,
+            end_date=end_date,
+            dry_run=dry_run,
+            discord_webhook=discord_webhook,
+        )
+    )
+
+
+@cli.command()
+@common_options
+@click.option("--slack-webhook", help="Slack Webhook URL.", required=True)
+@click.pass_context
+def slack(
+    ctx: click.Context,
+    supabase_url: str,
+    supabase_key: str,
+    supabase_table: str,
+    supabase_date_col: str,
+    start_date: str | None,
+    end_date: str | None,
+    slack_webhook: str,
+) -> None:
+    """Archive logs to a Slack webhook channel."""
+    dry_run = ctx.obj["DRY_RUN"]
+    asyncio.run(
+        run_archive(
+            dest="slack",
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
+            supabase_table=supabase_table,
+            supabase_date_col=supabase_date_col,
+            start_date=start_date,
+            end_date=end_date,
+            dry_run=dry_run,
+            slack_webhook=slack_webhook,
         )
     )
 
 
 async def run_archive(
-    source: str,
     dest: str,
     supabase_url: str,
     supabase_key: str,
     supabase_table: str,
     supabase_date_col: str,
-    github_token: str | None,
-    github_repo: str | None,
-    github_path: str,
-    github_branch: str,
-    google_creds: str | None,
-    google_sheet_id: str | None,
-    google_worksheet: str,
-    telegram_token: str | None,
-    telegram_chat_id: str | None,
-    discord_webhook: str | None,
-    slack_webhook: str | None,
     start_date: str | None,
     end_date: str | None,
     dry_run: bool,
+    github_token: str | None = None,
+    github_repo: str | None = None,
+    github_path: str = "logs/archive.json",
+    github_branch: str = "main",
+    google_creds: str | None = None,
+    google_sheet_id: str | None = None,
+    google_worksheet: str = "Logs",
+    telegram_token: str | None = None,
+    telegram_chat_id: str | None = None,
+    discord_webhook: str | None = None,
+    slack_webhook: str | None = None,
 ) -> None:
     if dry_run:
         click.secho(
@@ -165,86 +263,49 @@ async def run_archive(
             bold=True,
         )
 
-    # Parse destinations
-    dest_list = [d.strip().lower() for d in dest.split(",")]
-
     # 1. Fetching & Shipping logs dynamically (Streaming)
-    click.echo(click.style(f"Initializing pipeline for destinations: {dest_list}...", fg="cyan"))
+    click.echo(click.style(f"Initializing pipeline for destination: {dest}...", fg="cyan"))
 
     # Initialize manager with dry-run and retry logic
     manager = LogManager(dry_run=dry_run)
     targets = {}
 
     # Setup GitHub Adapter if configured and requested
-    if "github" in dest_list:
-        if github_token and github_repo:
-            github_adapter = GitHubAdapter(token=github_token, name="github")
-            manager.register_adapter(github_adapter)
-            targets["github"] = github_repo
-        else:
-            click.secho(
-                "GitHub adapter requested but configuration parameters "
-                "(--github-token, --github-repo) missing.",
-                fg="yellow",
-            )
+    if dest == "github" and github_token and github_repo:
+        github_adapter = GitHubAdapter(token=github_token, name="github")
+        manager.register_adapter(github_adapter)
+        targets["github"] = github_repo
 
     # Setup Google Sheets Adapter if configured and requested
-    if "sheets" in dest_list:
-        if google_creds and google_sheet_id:
-            sheets_adapter = SheetsAdapter(
-                service_account_file=google_creds,
-                spreadsheet_id=google_sheet_id,
-                worksheet_name=google_worksheet,
-                name="sheets",
-            )
-            manager.register_adapter(sheets_adapter)
-            targets["sheets"] = google_sheet_id
-        else:
-            click.secho(
-                "Sheets adapter requested but configuration parameters "
-                "(--google-creds, --google-sheet-id) missing.",
-                fg="yellow",
-            )
+    elif dest == "sheets" and google_creds and google_sheet_id:
+        sheets_adapter = SheetsAdapter(
+            service_account_file=google_creds,
+            spreadsheet_id=google_sheet_id,
+            worksheet_name=google_worksheet,
+            name="sheets",
+        )
+        manager.register_adapter(sheets_adapter)
+        targets["sheets"] = google_sheet_id
 
     # Setup Telegram Adapter if configured and requested
-    if "telegram" in dest_list:
-        if telegram_token and telegram_chat_id:
-            telegram_adapter = TelegramAdapter(
-                bot_token=telegram_token, chat_id=telegram_chat_id, name="telegram"
-            )
-            manager.register_adapter(telegram_adapter)
-            targets["telegram"] = telegram_chat_id
-        else:
-            click.secho(
-                "Telegram adapter requested but configuration parameters "
-                "(--telegram-token, --telegram-chat-id) missing.",
-                fg="yellow",
-            )
+    elif dest == "telegram" and telegram_token and telegram_chat_id:
+        telegram_adapter = TelegramAdapter(
+            bot_token=telegram_token, chat_id=telegram_chat_id, name="telegram"
+        )
+        manager.register_adapter(telegram_adapter)
+        targets["telegram"] = telegram_chat_id
 
     # Setup Discord Adapter if configured and requested
-    if "discord" in dest_list:
-        if discord_webhook:
-            discord_adapter = DiscordAdapter(webhook_url=discord_webhook, name="discord")
-            manager.register_adapter(discord_adapter)
-            targets["discord"] = discord_webhook
-        else:
-            click.secho(
-                "Discord adapter requested but configuration parameter "
-                "(--discord-webhook) missing.",
-                fg="yellow",
-            )
+    elif dest == "discord" and discord_webhook:
+        discord_adapter = DiscordAdapter(webhook_url=discord_webhook, name="discord")
+        manager.register_adapter(discord_adapter)
+        targets["discord"] = discord_webhook
 
     # Setup Slack Adapter if configured and requested
-    if "slack" in dest_list:
-        if slack_webhook:
-            slack_adapter = SlackAdapter(webhook_url=slack_webhook, name="slack")
-            manager.register_adapter(slack_adapter)
-            targets["slack"] = slack_webhook
-        else:
-            click.secho(
-                "Slack adapter requested but configuration parameter " "(--slack-webhook) missing.",
-                fg="yellow",
-            )
+    elif dest == "slack" and slack_webhook:
+        slack_adapter = SlackAdapter(webhook_url=slack_webhook, name="slack")
+        manager.register_adapter(slack_adapter)
+        targets["slack"] = slack_webhook
 
     if not targets:
         click.secho("No active adapters configured for shipment.", fg="red", err=True)
@@ -261,7 +322,7 @@ async def run_archive(
             click.echo("[Dry-Run] Using mock Supabase records because URL is mock.")
 
             # Yield single mock chunk
-            async def dummy_generator():
+            async def dummy_generator() -> Any:
                 yield [
                     {
                         "timestamp": "2026-07-19T12:00:00Z",
@@ -283,7 +344,7 @@ async def run_archive(
                     },
                 ]
 
-            log_stream = dummy_generator()
+            log_stream: Any = dummy_generator()
         else:
             fetcher = LogFetcher(supabase_url=supabase_url, supabase_key=supabase_key)
             log_stream = fetcher.fetch_logs_iter(
