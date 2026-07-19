@@ -167,47 +167,8 @@ async def run_archive(
     # Parse destinations
     dest_list = [d.strip().lower() for d in dest.split(",")]
 
-    # 1. Fetching logs from Supabase
-    click.echo(click.style(f"Fetching logs from source '{source}'...", fg="cyan"))
-
-    try:
-        if dry_run and supabase_url.startswith("https://dummy"):
-            click.echo("[Dry-Run] Using mock Supabase records because URL is mock.")
-            logs = [
-                {
-                    "id": 1,
-                    "created_at": "2026-07-19T12:00:00Z",
-                    "level": "INFO",
-                    "message": "Dummy log 1",
-                },
-                {
-                    "id": 2,
-                    "created_at": "2026-07-19T12:05:00Z",
-                    "level": "WARNING",
-                    "message": "Dummy log 2",
-                },
-            ]
-        else:
-            fetcher = LogFetcher(supabase_url=supabase_url, supabase_key=supabase_key)
-            logs = await fetcher.fetch_logs(
-                table_name=supabase_table,
-                start_date=start_date,
-                end_date=end_date,
-                date_column=supabase_date_col,
-            )
-
-        if not logs:
-            click.secho("No log records retrieved for the given filters.", fg="yellow")
-            return
-
-        click.secho(f"Successfully retrieved {len(logs)} logs from Supabase.", fg="green")
-
-    except Exception as e:
-        click.secho(f"Extraction failed: {e}", fg="red", err=True)
-        sys.exit(1)
-
-    # 2. Shipping logs
-    click.echo(click.style(f"Shipping logs to destinations: {dest_list}...", fg="cyan"))
+    # 1. Fetching & Shipping logs dynamically (Streaming)
+    click.echo(click.style(f"Initializing pipeline for destinations: {dest_list}...", fg="cyan"))
 
     # Initialize manager with dry-run and retry logic
     manager = LogManager(dry_run=dry_run)
@@ -258,6 +219,7 @@ async def run_archive(
                 "(--telegram-token, --telegram-chat-id) missing.",
                 fg="yellow",
             )
+
     # Setup Discord Adapter if configured and requested
     if "discord" in dest_list:
         if discord_webhook:
@@ -288,20 +250,78 @@ async def run_archive(
         click.secho("No active adapters configured for shipment.", fg="red", err=True)
         sys.exit(1)
 
-    # Trigger shipment
+    # Accumulate results across chunks
+    aggregated_report = {name: True for name in targets}
+    total_shipped = 0
     today_str = datetime.utcnow().strftime("%Y-%m-%d")
-    report = await manager.ship(
-        logs=logs,
-        targets=targets,
-        path=github_path,
-        branch=github_branch,
-        message=f"Archive logs: {today_str}",
-    )
+
+    try:
+        # Determine log source stream
+        if dry_run and supabase_url.startswith("https://dummy"):
+            click.echo("[Dry-Run] Using mock Supabase records because URL is mock.")
+            # Yield single mock chunk
+            async def dummy_generator():
+                yield [
+                    {
+                        "timestamp": "2026-07-19T12:00:00Z",
+                        "severity_text": "INFO",
+                        "severity_number": 9,
+                        "body": "Dummy log 1",
+                        "attributes": {"id": 1},
+                        "trace_id": "",
+                        "span_id": ""
+                    },
+                    {
+                        "timestamp": "2026-07-19T12:05:00Z",
+                        "severity_text": "WARNING",
+                        "severity_number": 13,
+                        "body": "Dummy log 2",
+                        "attributes": {"id": 2},
+                        "trace_id": "",
+                        "span_id": ""
+                    },
+                ]
+            log_stream = dummy_generator()
+        else:
+            fetcher = LogFetcher(supabase_url=supabase_url, supabase_key=supabase_key)
+            log_stream = fetcher.fetch_logs_iter(
+                table_name=supabase_table,
+                start_date=start_date,
+                end_date=end_date,
+                date_column=supabase_date_col,
+            )
+
+        async for chunk in log_stream:
+            if not chunk:
+                continue
+
+            click.echo(click.style(f"Streaming and shipping chunk of {len(chunk)} logs...", fg="cyan"))
+            report = await manager.ship(
+                logs=chunk,
+                targets=targets,
+                path=github_path,
+                branch=github_branch,
+                message=f"Archive logs: {today_str}",
+            )
+            for adapter, success in report.items():
+                if not success:
+                    aggregated_report[adapter] = False
+            total_shipped += len(chunk)
+
+        if total_shipped == 0:
+            click.secho("No log records retrieved for the given filters.", fg="yellow")
+            return
+
+        click.secho(f"Successfully processed total of {total_shipped} logs.", fg="green", bold=True)
+
+    except Exception as e:
+        click.secho(f"Extraction/Shipping pipeline failed: {e}", fg="red", err=True)
+        sys.exit(1)
 
     # Display report
     click.echo("\n--- Shipping Summary Report ---")
     all_success = True
-    for adapter, status in report.items():
+    for adapter, status in aggregated_report.items():
         if status:
             click.echo(f"Adapter '{adapter}' -> " + click.style("SUCCESS", fg="green"))
         else:

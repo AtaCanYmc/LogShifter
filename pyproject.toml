@@ -37,6 +37,7 @@ dev = [
     "mypy>=1.0.0",
     "ruff>=0.0.200",
     "pre-commit>=3.0.0",
+    "mkdocs-click>=0.8.0",
 ]
 
 [project.scripts]

@@ -2,24 +2,12 @@
 
 logshift features a click-based command line interface that allows running pipelines directly from the terminal or GitHub Actions cron runners.
 
-## Commands
+The CLI documentation below is dynamically generated from the codebase to avoid documentation drift:
 
-### `logshift archive`
-Fetches log records from a database source and delivers them to target destinations.
-
-#### Parameter Flags
-
-| Option Flag | Required | Default | Description |
-| --- | --- | --- | --- |
-| `--source` / `-s` | No | `supabase` | Log source database. |
-| `--dest` / `-d` | No | `github` | Comma-separated target destinations (e.g. `github,sheets,slack`). |
-| `--supabase-url` | Yes | - | Supabase project API endpoint URL. |
-| `--supabase-key` | Yes | - | Supabase Service Role key. |
-| `--supabase-table` | No | `logs` | Target table containing logs. |
-| `--github-token` | No | - | GitHub Personal Access Token. |
-| `--github-repo` | No | - | GitHub target repository (`username/repo`). |
-| `--discord-webhook` | No | - | Discord Webhook integration URL. |
-| `--slack-webhook` | No | - | Slack Webhook integration URL. |
+::: mkdocs-click
+    :module: logshift.cli
+    :command: cli
+    :depth: 2
 
 ---
 

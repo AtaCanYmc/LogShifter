@@ -12,6 +12,11 @@ nav:
   - Architecture: architecture.md
   - CLI Reference: cli.md
 
+plugins:
+  - search
+  - mkdocs-click:
+      package_paths: [src]
+
 markdown_extensions:
   - pymdownx.superfences
   - arithmatex
