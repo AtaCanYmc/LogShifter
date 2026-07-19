@@ -18,7 +18,7 @@ class SheetsAdapter(TransportAdapter):
         spreadsheet_id: str,
         worksheet_name: str = "Logs",
         name: str = "sheets",
-        config: Dict[str, Any] | None = None
+        config: Dict[str, Any] | None = None,
     ) -> None:
         super().__init__(name, config)
         self.service_account_file = service_account_file
@@ -28,7 +28,7 @@ class SheetsAdapter(TransportAdapter):
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
         Ships logs to a Google Spreadsheet.
-        
+
         Args:
             logs: List of log dicts.
             target: Spreadsheet ID (fallback/override).
@@ -52,12 +52,14 @@ class SheetsAdapter(TransportAdapter):
                 str(log.get("timestamp", "")),
                 str(log.get("severity_text", "")),
                 str(log.get("body", "")),
-                str({
-                    "attributes": attributes,
-                    "severity_number": log.get("severity_number"),
-                    "trace_id": log.get("trace_id"),
-                    "span_id": log.get("span_id")
-                })
+                str(
+                    {
+                        "attributes": attributes,
+                        "severity_number": log.get("severity_number"),
+                        "trace_id": log.get("trace_id"),
+                        "span_id": log.get("span_id"),
+                    }
+                ),
             ]
             rows.append(row)
 
@@ -78,8 +80,11 @@ class SheetsAdapter(TransportAdapter):
 
         return await asyncio.to_thread(self._append_to_sheets, spreadsheet_id, headers, rows)
 
-    def _append_to_sheets(self, spreadsheet_id: str, headers: List[str], rows: List[List[Any]]) -> bool:
+    def _append_to_sheets(
+        self, spreadsheet_id: str, headers: List[str], rows: List[List[Any]]
+    ) -> bool:
         import gspread
+
         try:
             gc = gspread.service_account(filename=self.service_account_file)
             sh = gc.open_by_key(spreadsheet_id)
@@ -88,7 +93,9 @@ class SheetsAdapter(TransportAdapter):
             try:
                 wks = sh.worksheet(self.worksheet_name)
             except gspread.exceptions.WorksheetNotFound:
-                wks = sh.add_worksheet(title=self.worksheet_name, rows="1000", cols=str(len(headers)))
+                wks = sh.add_worksheet(
+                    title=self.worksheet_name, rows="1000", cols=str(len(headers))
+                )
                 # Append headers
                 wks.append_row(headers)
                 logger.info(f"Created new worksheet '{self.worksheet_name}' with headers.")

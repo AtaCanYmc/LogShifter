@@ -15,7 +15,7 @@ class TransportAdapter(ABC):
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
         Ships logs asynchronously to the destination.
-        
+
         Args:
             logs: A list of dictionaries representing log entries.
             target: The destination identifier.

@@ -16,7 +16,9 @@ class GitHubAdapter(TransportAdapter):
     using GitPython, supporting Dry-Run simulation mode.
     """
 
-    def __init__(self, token: str, name: str = "github", config: Dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, token: str, name: str = "github", config: Dict[str, Any] | None = None
+    ) -> None:
         super().__init__(name, config)
         self.token = token
 

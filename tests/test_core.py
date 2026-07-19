@@ -35,6 +35,6 @@ async def test_retry_mechanism_error():
 
     with pytest.raises(AdapterError):
         await manager.ship([{"msg": "test"}], {"flaky": "target"})
-    
+
     # Verify that it retried 3 times
     assert adapter.attempts == 3

@@ -18,7 +18,7 @@ class TelegramAdapter(TransportAdapter):
         bot_token: str,
         chat_id: str,
         name: str = "telegram",
-        config: Dict[str, Any] | None = None
+        config: Dict[str, Any] | None = None,
     ) -> None:
         super().__init__(name, config)
         self.bot_token = bot_token
@@ -27,7 +27,7 @@ class TelegramAdapter(TransportAdapter):
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
         Ships logs to a Telegram chat.
-        
+
         Args:
             logs: List of log dicts.
             target: Chat ID (fallback/override).
@@ -52,7 +52,7 @@ class TelegramAdapter(TransportAdapter):
             logger.info(f"[Dry-Run Telegram] Bot Token: {self.bot_token[:5]}...")
             logger.info(f"[Dry-Run Telegram] Split into {len(chunks)} message chunks.")
             for i, chunk in enumerate(chunks):
-                logger.info(f"[Dry-Run Telegram] Chunk {i+1} Sample:\n{chunk[:200]}...")
+                logger.info(f"[Dry-Run Telegram] Chunk {i + 1} Sample:\n{chunk[:200]}...")
             logger.info("----------------------------------------------------")
             return True
 
@@ -69,7 +69,9 @@ class TelegramAdapter(TransportAdapter):
                     response = await client.post(url, json=payload, timeout=10.0)
                     response.raise_for_status()
                 except Exception as e:
-                    raise AdapterError(f"Telegram API request failed on chunk {idx+1}/{len(chunks)}: {e}") from e
+                    raise AdapterError(
+                        f"Telegram API request failed on chunk {idx + 1}/{len(chunks)}: {e}"
+                    ) from e
 
         logger.info(f"Successfully sent {len(chunks)} messages to Telegram.")
         return True
@@ -89,13 +91,13 @@ class TelegramAdapter(TransportAdapter):
 
             # Extract chunk
             chunk_content = text[:split_idx]
-            
+
             # Make sure markdown fences are closed if we split inside them
             if chunk_content.count("```") % 2 != 0:
                 chunk_content += "\n```"
 
             chunks.append(chunk_content)
-            
+
             # Prepare remaining text (prepending open markdown code fence if it was split)
             remaining = text[split_idx:].strip()
             if text[:split_idx].count("```") % 2 != 0:

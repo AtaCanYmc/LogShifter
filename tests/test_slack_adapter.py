@@ -9,7 +9,7 @@ async def test_slack_adapter_dry_run():
     res = await adapter.ship(
         logs=[{"id": 1, "message": "hello"}],
         target="https://hooks.slack.com/services/123/abc",
-        dry_run=True
+        dry_run=True,
     )
     assert res is True
 
@@ -26,7 +26,7 @@ async def test_slack_adapter_real_flow(mock_post):
     res = await adapter.ship(
         logs=[{"id": 1, "message": "hello"}],
         target="https://hooks.slack.com/services/123/abc",
-        dry_run=False
+        dry_run=False,
     )
     assert res is True
     mock_post.assert_called_once()
@@ -51,9 +51,9 @@ async def test_slack_adapter_rate_limit(mock_sleep, mock_post):
     res = await adapter.ship(
         logs=[{"id": 1, "message": "hello"}],
         target="https://hooks.slack.com/services/123/abc",
-        dry_run=False
+        dry_run=False,
     )
     assert res is True
-    
+
     assert mock_post.call_count == 2
     mock_sleep.assert_called_once_with(0.5)

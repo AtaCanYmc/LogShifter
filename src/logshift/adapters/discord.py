@@ -16,10 +16,7 @@ class DiscordAdapter(TransportAdapter):
     """
 
     def __init__(
-        self,
-        webhook_url: str,
-        name: str = "discord",
-        config: Dict[str, Any] | None = None
+        self, webhook_url: str, name: str = "discord", config: Dict[str, Any] | None = None
     ) -> None:
         super().__init__(name, config)
         self.webhook_url = webhook_url
@@ -27,7 +24,7 @@ class DiscordAdapter(TransportAdapter):
     async def ship(self, logs: List[Dict[str, Any]], target: str, **kwargs: Any) -> bool:
         """
         Ships logs to a Discord Webhook.
-        
+
         Args:
             logs: List of log dicts.
             target: Webhook URL (fallback/override).
@@ -51,7 +48,7 @@ class DiscordAdapter(TransportAdapter):
             logger.info(f"[Dry-Run Discord] Webhook URL: {webhook_url[:15]}...")
             logger.info(f"[Dry-Run Discord] Split into {len(chunks)} message chunks.")
             for i, chunk in enumerate(chunks):
-                logger.info(f"[Dry-Run Discord] Chunk {i+1} Sample:\n{chunk[:200]}...")
+                logger.info(f"[Dry-Run Discord] Chunk {i + 1} Sample:\n{chunk[:200]}...")
             logger.info("----------------------------------------------------")
             return True
 
@@ -70,16 +67,14 @@ class DiscordAdapter(TransportAdapter):
         content: str,
         chunk_num: int,
         total_chunks: int,
-        max_attempts: int = 5
+        max_attempts: int = 5,
     ) -> None:
-        payload = {
-            "content": content
-        }
+        payload = {"content": content}
 
         for attempt in range(1, max_attempts + 1):
             try:
                 response = await client.post(url, json=payload, timeout=10.0)
-                
+
                 # Check for rate limiting
                 if response.status_code == 429:
                     retry_after = response.json().get("retry_after", 2.0)
@@ -124,13 +119,13 @@ class DiscordAdapter(TransportAdapter):
 
             # Extract chunk
             chunk_content = text[:split_idx]
-            
+
             # Make sure markdown fences are closed if we split inside them
             if chunk_content.count("```") % 2 != 0:
                 chunk_content += "\n```"
 
             chunks.append(chunk_content)
-            
+
             # Prepare remaining text (prepending open markdown code fence if it was split)
             remaining = text[split_idx:].strip()
             if text[:split_idx].count("```") % 2 != 0:

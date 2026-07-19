@@ -9,16 +9,17 @@ logger = logging.getLogger("logshift.core.fetcher")
 
 class LogFetcher:
     """
-    LogFetcher retrieves log entries from a Supabase database table in a chunked, 
+    LogFetcher retrieves log entries from a Supabase database table in a chunked,
     memory-efficient manner using cursor-based pagination (ID-based progression).
     """
 
     def __init__(self, supabase_url: str, supabase_key: str) -> None:
         if not supabase_url or not supabase_key:
             raise ConfigurationError("Supabase URL and API Key must be provided.")
-        
+
         # Defer import to keep core lightweight
         from supabase import create_client, Client
+
         self.client: Client = create_client(supabase_url, supabase_key)
 
     async def fetch_logs(
@@ -29,13 +30,20 @@ class LogFetcher:
         date_column: str = "created_at",
         cursor_column: str = "id",
         chunk_size: int = 1000,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         """
         Fetches logs from Supabase utilizing cursor-based pagination.
         """
         return await asyncio.to_thread(
-            self._execute_fetch, table_name, start_date, end_date, date_column, cursor_column, chunk_size, **kwargs
+            self._execute_fetch,
+            table_name,
+            start_date,
+            end_date,
+            date_column,
+            cursor_column,
+            chunk_size,
+            **kwargs,
         )
 
     def _execute_fetch(
@@ -46,12 +54,14 @@ class LogFetcher:
         date_column: str = "created_at",
         cursor_column: str = "id",
         chunk_size: int = 1000,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         all_logs: List[Dict[str, Any]] = []
         last_id: Optional[Any] = None
 
-        logger.info(f"Starting cursor-based fetch from table '{table_name}' using cursor '{cursor_column}'...")
+        logger.info(
+            f"Starting cursor-based fetch from table '{table_name}' using cursor '{cursor_column}'..."
+        )
 
         try:
             while True:
@@ -77,7 +87,9 @@ class LogFetcher:
                 mapped_data = [self._to_opentelemetry_format(row, date_column) for row in data]
 
                 all_logs.extend(mapped_data)
-                logger.info(f"Fetched {len(data)} records. Last cursor value: {last_id}. Total so far: {len(all_logs)}")
+                logger.info(
+                    f"Fetched {len(data)} records. Last cursor value: {last_id}. Total so far: {len(all_logs)}"
+                )
 
                 last_record = data[-1]
                 last_id = last_record.get(cursor_column)
@@ -96,15 +108,18 @@ class LogFetcher:
         """
         # Determine log level
         level = str(row.get("level", "INFO")).upper()
-        
+
         # Severity number mapping
         severity_map = {
-            "TRACE": 1, "VERBOSE": 1,
+            "TRACE": 1,
+            "VERBOSE": 1,
             "DEBUG": 5,
             "INFO": 9,
-            "WARN": 13, "WARNING": 13,
+            "WARN": 13,
+            "WARNING": 13,
             "ERROR": 17,
-            "FATAL": 21, "CRITICAL": 21
+            "FATAL": 21,
+            "CRITICAL": 21,
         }
         severity_number = severity_map.get(level, 9)
 
@@ -122,6 +137,5 @@ class LogFetcher:
             "body": body,
             "attributes": attributes,
             "trace_id": row.get("trace_id", ""),
-            "span_id": row.get("span_id", "")
+            "span_id": row.get("span_id", ""),
         }
-

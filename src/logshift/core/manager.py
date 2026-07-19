@@ -19,7 +19,7 @@ class LogManager:
         dry_run: bool = False,
         max_retries: int = 3,
         initial_delay: float = 1.0,
-        backoff: float = 2.0
+        backoff: float = 2.0,
     ) -> None:
         self._adapters: Dict[str, TransportAdapter] = {}
         self.dry_run = dry_run
@@ -43,10 +43,7 @@ class LogManager:
         return set(self._adapters.keys())
 
     async def ship(
-        self,
-        logs: List[Dict[str, Any]],
-        targets: Dict[str, str],
-        **kwargs: Any
+        self, logs: List[Dict[str, Any]], targets: Dict[str, str], **kwargs: Any
     ) -> Dict[str, bool]:
         """
         Ships logs concurrently to selected registered adapters.
@@ -58,7 +55,7 @@ class LogManager:
             if adapter_name not in self._adapters:
                 logger.error(f"Cannot ship to unregistered adapter: {adapter_name}")
                 continue
-            
+
             adapter = self._adapters[adapter_name]
             tasks.append(self._ship_safe(adapter, logs, target, **kwargs))
             adapter_names.append(adapter_name)
@@ -68,7 +65,7 @@ class LogManager:
             return {}
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         report = {}
         for name, result in zip(adapter_names, results):
             if isinstance(result, Exception):
@@ -80,11 +77,7 @@ class LogManager:
         return report
 
     async def _ship_safe(
-        self,
-        adapter: TransportAdapter,
-        logs: List[Dict[str, Any]],
-        target: str,
-        **kwargs: Any
+        self, adapter: TransportAdapter, logs: List[Dict[str, Any]], target: str, **kwargs: Any
     ) -> bool:
         delay = self.initial_delay
         last_exception = None
@@ -107,4 +100,6 @@ class LogManager:
                         f"Adapter '{adapter.name}' failed permanently after {attempt} attempts."
                     )
 
-        raise AdapterError(f"Error in adapter '{adapter.name}': {last_exception}") from last_exception
+        raise AdapterError(
+            f"Error in adapter '{adapter.name}': {last_exception}"
+        ) from last_exception
