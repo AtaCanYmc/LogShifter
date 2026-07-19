@@ -1,0 +1,20 @@
+site_name: logshift SDK Documentation
+site_url: https://github.com/username/LogShifter
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: teal
+    accent: teal
+
+nav:
+  - Welcome: index.md
+  - Architecture: architecture.md
+  - CLI Reference: cli.md
+
+markdown_extensions:
+  - pymdownx.superfences
+  - arithmatex
+
+extra_javascript:
+  - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML
