@@ -1,7 +1,7 @@
 import pytest
 
 from logshift.core.adapter import TransportAdapter
-from logshift.core.exceptions import AdapterError, LogshiftError
+from logshift.core.exceptions import LogshiftError
 from logshift.core.manager import LogManager
 
 
@@ -32,8 +32,8 @@ async def test_retry_mechanism_error():
     adapter = MockFlakyAdapter()
     manager.register_adapter(adapter)
 
-    with pytest.raises(AdapterError):
-        await manager.ship([{"msg": "test"}], {"flaky": "target"})
+    report = await manager.ship([{"msg": "test"}], {"flaky": "target"})
+    assert report["flaky"] is False
 
     # Verify that it retried 3 times
     assert adapter.attempts == 3

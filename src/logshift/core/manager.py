@@ -82,9 +82,7 @@ class LogManager:
             # Ensure background queue and worker are active
             if adapter_name not in self._queues:
                 self._queues[adapter_name] = asyncio.Queue()
-                self._workers[adapter_name] = asyncio.create_task(
-                    self._worker(adapter_name)
-                )
+                self._workers[adapter_name] = asyncio.create_task(self._worker(adapter_name))
 
             future = asyncio.get_running_loop().create_future()
             job = ShipJob(logs, target, kwargs, future)
@@ -116,9 +114,7 @@ class LogManager:
             while True:
                 job = await queue.get()
                 try:
-                    res = await self._ship_safe(
-                        adapter, job.logs, job.target, **job.kwargs
-                    )
+                    res = await self._ship_safe(adapter, job.logs, job.target, **job.kwargs)
                     job.future.set_result(res)
                 except Exception as e:
                     job.future.set_exception(e)
@@ -128,11 +124,7 @@ class LogManager:
             logger.info(f"Worker for '{adapter_name}' cancelled.")
 
     async def _ship_safe(
-        self,
-        adapter: TransportAdapter,
-        logs: List[Dict[str, Any]],
-        target: str,
-        **kwargs: Any
+        self, adapter: TransportAdapter, logs: List[Dict[str, Any]], target: str, **kwargs: Any
     ) -> bool:
         delay = self.initial_delay
         last_exception = None

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -24,7 +24,7 @@ async def test_github_adapter_real_flow(mock_repo_cls):
 
     adapter = GitHubAdapter(token="mock-token")
 
-    with patch("builtins.open", patch("os.path.exists", return_value=False)):
+    with patch("builtins.open", mock_open()), patch("os.path.exists", return_value=False):
         res = await adapter.ship(
             logs=[{"id": 1, "message": "hello"}], target="user/repo", dry_run=False
         )

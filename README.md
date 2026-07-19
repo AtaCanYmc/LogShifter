@@ -92,31 +92,26 @@ pip install -e .
 
 ## 5. CLI Usage
 
-All configuration options are passed directly as command-line arguments. This keeps execution stateless and simple.
+All configuration options are passed directly to subcommand targets. This keeps execution stateless and simple.
 
 ### Run in Dry-Run (Simulation) Mode
-Test your configuration and see simulated logs output without pushing to any destinations:
+Test your configuration and see simulated logs output without pushing to Discord:
 ```bash
-logshift --dry-run archive \
+logshift --dry-run discord \
   --supabase-url "https://dummy.supabase.co" \
   --supabase-key "dummy-key" \
-  --dest github,sheets,telegram,discord,slack
+  --discord-webhook "https://discord.com/api/webhooks/123/abc"
 ```
 
 ### Run Active Archive Pipeline
-Run the real pipeline pulling from Supabase and shipping to multiple destinations (GitHub, Telegram, Discord, and Slack Webhook):
+Run the real pipeline pulling from Supabase and shipping to GitHub:
 ```bash
-logshift archive \
+logshift github \
   --supabase-url "https://yourproject.supabase.co" \
   --supabase-key "your-supabase-service-role-key" \
   --supabase-table "logs" \
-  --dest github,telegram,discord,slack \
   --github-token "ghp_yourPersonalAccessToken" \
-  --github-repo "username/logs-archive-repo" \
-  --telegram-token "bot_token_here" \
-  --telegram-chat-id "chat_id_here" \
-  --discord-webhook "https://discord.com/api/webhooks/123/abc" \
-  --slack-webhook "https://hooks.slack.com/services/123/abc"
+  --github-repo "username/logs-archive-repo"
 ```
 
 ---
