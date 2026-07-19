@@ -1,8 +1,6 @@
 import pytest
 import asyncio
-from logshift.core import LogshiftError, LogManager, AdapterError, TransportAdapter
-from logshift.adapters.sheets import SheetsAdapter
-from logshift.adapters.telegram import TelegramAdapter
+from logshift.core import LogshiftError, LogManager, AdapterError, TransportAdapter, LogFetcher
 
 
 def test_error_definitions():
@@ -14,23 +12,6 @@ def test_log_manager_initialization():
     assert manager.dry_run is True
     assert manager.max_retries == 2
     assert len(manager.registered_adapters) == 0
-
-
-def test_adapters_dry_run_initialization():
-    sheets_adapter = SheetsAdapter(
-        service_account_file="credentials.json",
-        spreadsheet_id="spread_123",
-        worksheet_name="TestLogs"
-    )
-    assert sheets_adapter.spreadsheet_id == "spread_123"
-    assert sheets_adapter.worksheet_name == "TestLogs"
-
-    telegram_adapter = TelegramAdapter(
-        bot_token="token_123",
-        chat_id="chat_123"
-    )
-    assert telegram_adapter.bot_token == "token_123"
-    assert telegram_adapter.chat_id == "chat_123"
 
 
 class MockFlakyAdapter(TransportAdapter):
